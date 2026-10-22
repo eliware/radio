@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eliware Radio</title>
+    <style>
+      body {
+        background: #080808;
+        color: #00ff66;
+        font: 16px monospace;
+        margin: 2rem;
+      }
+      a {
+        color: #00ff66;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Radio service</h1>
+      <p>Server status: <span id="server-status">Checking</span></p>
+      <p><a href="/health">Health</a> · <a href="/ready">Readiness</a></p>
+    </main>
+    <script src="/client.js"></script>
+    <script>
+      radioLoadReadiness(fetch, document);
+    </script>
+  </body>
+</html>

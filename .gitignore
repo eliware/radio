@@ -1,0 +1,14 @@
+**/node_modules/
+**/coverage/
+**/dist/
+**/build/
+**/generated/
+**/artifacts/
+**/test-results/
+**/.git/
+**/.DS_Store
+**/Thumbs.db
+.env
+.env.*
+!.env.example
+npm-debug.log*

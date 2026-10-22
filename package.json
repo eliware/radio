@@ -1,0 +1,94 @@
+{
+  "name": "@eliware/radio",
+  "version": "15.0.0",
+  "type": "module",
+  "description": "Web-based SDR streaming",
+  "keywords": [
+    "radio",
+    "rtl-sdr"
+  ],
+  "private": true,
+  "bin": {
+    "radio": "bin/radio.mjs"
+  },
+  "scripts": {
+    "start": "node bin/radio.mjs",
+    "test": "eliware-test",
+    "lint": "eliware-test --lint",
+    "audit": "eliware-test --audit",
+    "format": "eliware-test --format",
+    "format:check": "eliware-test --format-check",
+    "build": "webpack --config webpack.config.mjs",
+    "screenshots": "node bin/screenshots.mjs",
+    "lighthouse": "lighthouse http://127.0.0.1:3000 --only-categories=accessibility --output=json --output-path=artifacts/lighthouse.json --chrome-flags=--headless"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "dependencies": {
+    "@eliware/common": "^15.0.0",
+    "@fastify/static": "^10.1.7",
+    "fastify": "^5.12.7",
+    "lighthouse": "^13.5.0",
+    "puppeteer": "^25.16.0",
+    "webpack": "^5.112.1",
+    "webpack-cli": "^7.2.3"
+  },
+  "devDependencies": {
+    "@eliware/test": "^15.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.mjs"
+    ],
+    "coverageReporters": [
+      "text",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    }
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": false,
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "always",
+    "proseWrap": "preserve",
+    "endOfLine": "lf"
+  },
+  "author": "Eliware <eliware@eliware.org>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliware/radio.git"
+  },
+  "homepage": "https://github.com/eliware/radio#readme",
+  "bugs": {
+    "url": "https://github.com/eliware/radio/issues"
+  },
+  "eliware": {
+    "id": "E-1400",
+    "apply": [
+      "general",
+      "application",
+      "web"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+version: "15.0"
+description: Repository-specific guidance for Eliware Radio.
+directives:
+  - id: E-1400.0
+    dos:
+      - Provide a status page at the root route.
+      - Provide health and readiness routes.
+      - Read the listening port from PORT and default to 3000.
+      - Build and run in a Docker container.
+      - Keep SDR processing and live audio out of this scaffold.
+    donts:
+      - Do not add receiver processing or live audio to this scaffold.
