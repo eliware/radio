@@ -1,28 +1,8 @@
-import { readdir, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { hasUsbSerial } from "./usb-device.mjs";
 
-export async function hasUsbSerial(
-  serial,
-  root = "/sys/bus/usb/devices",
-  filesystem = { readdir, readFile },
-) {
-  let devices;
-  try {
-    devices = await filesystem.readdir(root);
-  } catch {
-    return false;
-  }
-  for (const device of devices) {
-    try {
-      const path = `${root}/${device}`;
-      const [deviceSerial, authorized] = await Promise.all([
-        filesystem.readFile(`${path}/serial`, "utf8"),
-        filesystem.readFile(`${path}/authorized`, "utf8"),
-      ]);
-      if (deviceSerial.trim() === serial && authorized.trim() === "1") return true;
-    } catch {}
-  }
-  return false;
+function stop(entry) {
+  for (const child of Object.values(entry ?? {})) child?.kill("SIGTERM");
 }
 
 export function createReceiverSupervisor({
@@ -30,6 +10,7 @@ export function createReceiverSupervisor({
   spawnProcess = spawn,
   present = hasUsbSerial,
   configFor,
+  processorArgsFor,
   writeConfig,
   intervalMs = 3000,
 }) {
@@ -38,55 +19,80 @@ export function createReceiverSupervisor({
   );
   const children = new Map();
   let closed = false;
-  const timers = new Map();
+  let timer;
+
   async function poll(receiver) {
     if (closed) return;
     const { channel, serial } = receiver;
-    const isPresent = await present(serial);
-    if (!isPresent) {
-      if (states[channel].state !== "disconnected") children.get(channel)?.kill("SIGTERM");
+    if (!(await present(serial))) {
+      const entry = children.get(channel);
+      children.delete(channel);
+      stop(entry);
       states[channel] = { state: "disconnected", serial };
       return;
     }
     if (children.has(channel)) return;
     states[channel] = { state: "starting", serial };
-    const configPath = `/tmp/rtl_airband-${channel}.conf`;
-    await writeConfig(configPath, configFor(channel));
-    const child = spawnProcess("/usr/local/bin/rtl_airband", ["-F", "-e", "-c", configPath], {
-      stdio: "inherit",
-    });
-    children.set(channel, child);
-    states[channel] = { state: "running", serial };
-    child.once("error", (error) => {
-      states[channel] = { state: "error", serial, message: error.message };
-      children.delete(channel);
-    });
-    child.once("close", () => {
-      children.delete(channel);
-      if (!closed && states[channel].state !== "disconnected") {
-        states[channel] = { state: "waiting", serial };
+    const entry = {};
+    try {
+      await writeConfig(`/tmp/rtl_airband-${channel}.conf`, configFor(channel));
+      if (processorArgsFor)
+        entry.audio = spawnProcess("/usr/bin/ffmpeg", processorArgsFor(channel), {
+          stdio: "inherit",
+        });
+      entry.receiver = spawnProcess(
+        "/usr/local/bin/rtl_airband",
+        ["-F", "-e", "-c", `/tmp/rtl_airband-${channel}.conf`],
+        { stdio: "inherit" },
+      );
+      children.set(channel, entry);
+      states[channel] = { state: "running", serial };
+      for (const [kind, child] of Object.entries(entry)) {
+        child.once("error", (error) => fail(channel, entry, serial, error.message));
+        child.once("close", () => ended(channel, entry, serial, kind));
       }
-    });
+    } catch (error) {
+      stop(entry);
+      states[channel] = { state: "error", serial, message: error.message };
+    }
   }
-  async function check() {
-    await Promise.all(receivers.map(poll));
+
+  function fail(channel, entry, serial, message) {
+    if (children.get(channel) !== entry) return;
+    children.delete(channel);
+    stop(entry);
+    states[channel] = { state: "error", serial, message };
   }
+
+  function ended(channel, entry, serial, kind) {
+    if (children.get(channel) !== entry) return;
+    children.delete(channel);
+    stop(entry);
+    states[channel] = { state: kind === "receiver" ? "waiting" : "error", serial };
+  }
+
+  const check = () => Promise.all(receivers.map(poll));
   const schedule = () => {
-    if (closed) return;
-    timers.set(
-      "poll",
-      setTimeout(async () => {
+    if (!closed)
+      timer = setTimeout(async () => {
         await check();
         schedule();
-      }, intervalMs),
-    );
+      }, intervalMs);
   };
-  const ready = () => receivers.every(({ channel }) => states[channel].state === "running");
   const close = async () => {
     closed = true;
-    for (const timer of timers.values()) clearTimeout(timer);
-    for (const child of children.values()) child.kill("SIGTERM");
+    clearTimeout(timer);
+    const active = [...children.values()];
     children.clear();
+    for (const entry of active) stop(entry);
   };
-  return { check, close, ready, status: () => structuredClone(states), schedule };
+  return {
+    check,
+    close,
+    ready: () => receivers.every(({ channel }) => states[channel].state === "running"),
+    status: () => structuredClone(states),
+    schedule,
+  };
 }
+
+export { hasUsbSerial } from "./usb-device.mjs";

@@ -1,30 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createReceiverSupervisor, hasUsbSerial } from "../src/receiver-supervisor.mjs";
-
-test("finds assigned USB serials and handles missing sysfs entries", async () => {
-  const filesystem = {
-    readdir: jest.fn(async () => ["1-2", "1-3"]),
-    readFile: jest.fn(async (path) => {
-      if (path.endsWith("1-2/serial")) return "851\n";
-      if (path.endsWith("1-2/authorized")) return "1\n";
-      if (path.endsWith("1-3/serial")) return "853\n";
-      if (path.endsWith("1-3/authorized")) return "0\n";
-      throw new Error("missing");
-    }),
-  };
-  await expect(hasUsbSerial("851", "/sys/devices", filesystem)).resolves.toBe(true);
-  await expect(hasUsbSerial("853", "/sys/devices", filesystem)).resolves.toBe(false);
-  await expect(
-    hasUsbSerial("851", "/missing", {
-      readdir: async () => {
-        throw new Error("missing");
-      },
-      readFile: filesystem.readFile,
-    }),
-  ).resolves.toBe(false);
-  await expect(hasUsbSerial("radio-test-serial")).resolves.toBe(false);
-});
+import { createReceiverSupervisor } from "../src/receiver-supervisor.mjs";
 
 test("supports an empty receiver set with default supervisor dependencies", async () => {
   const supervisor = createReceiverSupervisor({
@@ -80,6 +56,75 @@ test("starts each receiver independently and restarts it after USB reconnect", a
   expect(children[1].child.signals).toEqual(["SIGTERM"]);
   expect(children[2].child.signals).toEqual(["SIGTERM"]);
   expect(writeConfig).toHaveBeenCalledTimes(3);
+});
+
+test("runs the audio processor before the receiver and stops both on disconnect", async () => {
+  const childProcesses = [];
+  let connected = true;
+  const supervisor = createReceiverSupervisor({
+    receivers: [{ channel: "police", serial: "853" }],
+    present: async () => connected,
+    configFor: () => "radio config",
+    processorArgsFor: () => ["processor args"],
+    writeConfig: async () => {},
+    spawnProcess: (command, args) => {
+      const child = new Child();
+      childProcesses.push({ command, args, child });
+      return child;
+    },
+  });
+  await supervisor.check();
+  expect(childProcesses.map(({ command }) => command)).toEqual([
+    "/usr/bin/ffmpeg",
+    "/usr/local/bin/rtl_airband",
+  ]);
+  expect(supervisor.ready()).toBe(true);
+  connected = false;
+  await supervisor.check();
+  expect(childProcesses.map(({ child }) => child.signals)).toEqual([["SIGTERM"], ["SIGTERM"]]);
+  expect(supervisor.status().police.state).toBe("disconnected");
+  childProcesses[0].child.emit("error", new Error("late processor error"));
+  expect(supervisor.status().police.state).toBe("disconnected");
+  await supervisor.close();
+});
+
+test("marks audio processor exits as errors and stops the receiver", async () => {
+  const children = [];
+  const supervisor = createReceiverSupervisor({
+    receivers: [{ channel: "fire", serial: "851" }],
+    present: async () => true,
+    configFor: () => "radio config",
+    processorArgsFor: () => ["processor args"],
+    writeConfig: async () => {},
+    spawnProcess: () => {
+      const child = new Child();
+      children.push(child);
+      return child;
+    },
+  });
+  await supervisor.check();
+  children[0].emit("close", 1);
+  expect(supervisor.status().fire.state).toBe("error");
+  expect(children[1].signals).toContain("SIGTERM");
+  await supervisor.close();
+});
+
+test("records setup failures for an unavailable audio pipeline", async () => {
+  const supervisor = createReceiverSupervisor({
+    receivers: [{ channel: "fire", serial: "851" }],
+    present: async () => true,
+    configFor: () => "radio config",
+    writeConfig: async () => {
+      throw new Error("config write failed");
+    },
+  });
+  await supervisor.check();
+  expect(supervisor.status().fire).toEqual({
+    state: "error",
+    serial: "851",
+    message: "config write failed",
+  });
+  await supervisor.close();
 });
 
 test("retries a failed receiver and stops scheduled polling on close", async () => {

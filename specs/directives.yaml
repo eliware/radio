@@ -11,7 +11,8 @@ directives:
       - Supervise Police and Fire receiver processes separately by assigned USB serial.
       - Stop only the disconnected channel and launch it when its USB serial returns.
       - Expose per-channel receiver state through the player API.
-      - Apply NFM and configured CTCSS squelch before streaming each channel.
+      - Apply NFM and configured CTCSS squelch before denoising and leveling each channel stream.
+      - Attenuate background noise and normalize transmission levels before Icecast playback.
       - Keep SDR serial numbers and stream credentials in local environment configuration.
     donts:
       - Do not add ADS-B or aircraft-tracking features.

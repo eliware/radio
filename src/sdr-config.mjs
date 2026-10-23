@@ -17,20 +17,19 @@ function numberSetting(env, key) {
   return value;
 }
 
-function device({ serial, frequency, tone, mount, password }) {
+function device({ serial, frequency, tone, mount }) {
   return `{ type = "rtlsdr"; serial = "${serial}"; gain = 25; sample_rate = 1.024;
     centerfreq = ${frequency};
     channels: ({ freq = ${frequency}; modulation = "nfm"; ctcss = ${tone};
       notch = ${tone}; outputs: ({
-      type = "icecast"; server = "icecast"; port = 8000; mountpoint = "${mount}.mp3";
-      username = "source"; password = "${password}";
+      type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = ${mount === "police" ? 12000 : 12001};
+      continuous = true;
     }); }); }`;
 }
 
 export function createSdrConfig(env, channel = "both") {
   if (!["both", "police", "fire"].includes(channel)) throw new Error("Unknown receiver channel");
-  const password = required(env, "ICECAST_SOURCE_PASSWORD");
-  if (!/^[a-zA-Z0-9_-]{16,}$/.test(password)) {
+  if (!/^[a-zA-Z0-9_-]{16,}$/.test(required(env, "ICECAST_SOURCE_PASSWORD"))) {
     throw new Error(
       "ICECAST_SOURCE_PASSWORD must use at least 16 letters, digits, underscores, or hyphens",
     );
@@ -45,14 +44,12 @@ export function createSdrConfig(env, channel = "both") {
     frequency: numberSetting(env, "RADIO_POLICE_FREQUENCY_MHZ"),
     tone: policeTone,
     mount: "police",
-    password,
   });
   const fire = device({
     serial: fireSerial,
     frequency: numberSetting(env, "RADIO_FIRE_FREQUENCY_MHZ"),
     tone: fireTone,
     mount: "fire",
-    password,
   });
   const devices = channel === "police" ? police : channel === "fire" ? fire : `${police}, ${fire}`;
   return `fft_size = 256; devices: (${devices});`;

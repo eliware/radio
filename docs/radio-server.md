@@ -3,12 +3,18 @@
 Compose starts three private containers. `radio` serves the player on TCP port `3000` by default.
 This host's local `.env` sets `PORT=3001` because Radar uses port `3000`.
 
-`sdr` supervises Police and Fire as separate RTLSDR-Airband processes. Each starts only when its
-assigned USB serial exists in system device data. Removing one dongle stops only its channel
-process. When that serial returns, its process starts again without restarting the other.
-Both processes use NFM demodulation and configured CTCSS squelch.
+`sdr` supervises Police and Fire as separate receiver pipelines. Each pipeline starts only when
+its assigned USB serial exists in system device data. Removing one dongle stops only its channel
+pipeline. When that serial returns, both processes start again without restarting the other.
+RTLSDR-Airband applies NFM demodulation and configured CTCSS squelch, then sends decoded PCM to
+FFmpeg through a private UDP socket.
 
-`icecast` receives each audio source and serves its mountpoints to the player.
+FFmpeg attenuates constant background noise with an FFT denoiser, then balances quiet and loud
+transmissions dynamically. It publishes processed streams to the existing Icecast endpoints.
+Moderate filter settings help preserve voice quality. The filter does not isolate voices during
+overlapping transmissions like Krisp.
+
+`icecast` receives the processed channel sources and serves its mountpoints to the player.
 Each dongle samples at 1.024 Msps to lower USB traffic while covering its single channel.
 
 The SDR and Icecast containers run Node as PID 1. Their supervisors expose `/health` and `/ready`

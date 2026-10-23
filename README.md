@@ -30,6 +30,9 @@ Web-based SDR streaming
 Radio provides a private player for two NFM channels. RTLSDR-Airband applies configured
 CTCSS squelch and sends channel audio to Icecast.
 
+The web player can be installed as a portrait, standalone PWA. It does not cache audio or
+provide offline playback.
+
 ## Requirements
 
 Use Node.js 26 or later and npm. Docker Compose is available for container deployment.
@@ -87,7 +90,9 @@ Both status routes return HTTP 200 and a JSON status value.
 ## Assets
 
 The app serves files from `public/` and `dist/`. Webpack writes the browser bundle to
-`dist/client.js`. The player page has separate Police and Fire audio controls.
+`dist/client.js`. The player page has separate Police and Fire audio controls. The web manifest,
+app icons, and install screenshots are in `public/`. Run `npm run screenshots` while the app is
+available to refresh the desktop screenshot and PWA assets.
 
 ## Development server
 
@@ -102,6 +107,10 @@ Run `npm run build` to bundle readiness, receiver state, and audio status update
 Run `docker compose up -d --build`. On this server, open `http://localhost:3001`.
 Radar uses port `3000`. Confirm the player health routes return status 200. The SDR remains
 unready until both spare dongle serial numbers are configured.
+
+The NAS nginx virtual host at `radio.purinton.us` proxies HTTPS traffic to `127.0.0.1:3001`
+using the existing `purinton.us` wildcard certificate. Its source configuration is
+`nginx/radio.purinton.us.conf`.
 
 ## Support
 

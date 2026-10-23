@@ -19,8 +19,8 @@ test("creates isolated NFM receivers with CTCSS and reduced sample rate", () => 
   expect(config).toContain("sample_rate = 1.024");
   expect(config).toContain("ctcss = 77.0");
   expect(config).toContain("notch = 156.7");
-  expect(config).toContain('mountpoint = "police.mp3"');
-  expect(config).toContain('mountpoint = "fire.mp3"');
+  expect(config).toContain('type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = 12000');
+  expect(config).toContain('type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = 12001');
 });
 
 test.each([
