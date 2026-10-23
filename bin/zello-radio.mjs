@@ -32,7 +32,7 @@ process.on("unhandledRejection", fatal);
 try {
   runtime = await createRadioRuntime({ log: logger });
   server = createStatusServer(runtime, logger);
-  const port = Number(process.env.RADIO_HEALTH_PORT ?? 9101);
+  const port = Number(process.env.RADIO_HEALTH_PORT ?? 1400);
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, "0.0.0.0", resolve);

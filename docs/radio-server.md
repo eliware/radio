@@ -23,7 +23,7 @@ sent once after its first correct login during container startup.
 
 ## Status and operations
 
-The container exposes `/health` and `/ready` on port `9101`, published on localhost only.
+The container exposes `/health` and `/ready` on port `1400`, published on localhost only.
 `/health` confirms that the process responds. `/ready` returns success only while Airband runs and
 both Zello sessions are connected and logged in.
 

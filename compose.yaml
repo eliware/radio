@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: docker/radio/Dockerfile
     environment:
-      RADIO_HEALTH_PORT: 9101
+      RADIO_HEALTH_PORT: 1400
       RADIO_CONFIG_DIR: /run/radio
       LOG_LEVEL: info
     volumes:
@@ -13,14 +13,14 @@ services:
     devices:
       - /dev/bus/usb:/dev/bus/usb
     ports:
-      - "127.0.0.1:9101:9101"
+      - "127.0.0.1:1400:1400"
     healthcheck:
       test:
         - CMD
         - node
         - -e
         - >-
-          fetch('http://127.0.0.1:9101/ready').then((r) => process.exit(r.ok ? 0 :
+          fetch('http://127.0.0.1:1400/ready').then((r) => process.exit(r.ok ? 0 :
           1)).catch(() => process.exit(1))
       interval: 15s
       timeout: 3s

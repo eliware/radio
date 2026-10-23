@@ -24,5 +24,5 @@ COPY --from=build /build/airband-build/src/rtl_airband /usr/local/bin/rtl_airban
 COPY src/receiver-supervisor.mjs src/sdr-config.mjs src/usb-device.mjs /app/src/
 COPY bin/sdr-supervisor.mjs /app/bin/
 WORKDIR /app
-EXPOSE 9101
+EXPOSE 1400
 CMD ["node", "bin/sdr-supervisor.mjs"]

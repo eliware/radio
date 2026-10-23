@@ -78,7 +78,7 @@ Compose runs one container with Node.js as PID 1 and one RTLSDR-Airband process.
 checks for both dongle serials, connects to Zello, then starts the receiver. Each Zello socket stays
 open across radio transmissions and uses exponential reconnect delays capped at five minutes.
 
-The status endpoints use port `9101`, bound to localhost. Compose mounts both channel files as
+The status endpoints use port `1400`, bound to localhost. Compose mounts both channel files as
 read-only and passes USB devices through `/dev/bus/usb`. Run `docker compose down` to stop the bridge.
 
 Logs are timestamped JSON records with `debug`, `info`, `warn`, and `error` levels. Set `LOG_LEVEL`
