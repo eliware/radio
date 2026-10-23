@@ -13,10 +13,13 @@ export function createSessionSupervisor(
   const pause = (ms) => Promise.race([wait(ms), stopSignal]);
   const initial = channels.map(
     (channel) =>
-      new Promise((resolve) => {
+      new Promise((resolve, reject) => {
         channel.resolveTone = resolve;
+        channel.rejectTone = reject;
       }),
   );
+  const initialReady = Promise.all(initial);
+  initialReady.catch(() => {});
 
   async function maintain(channel) {
     let delay = 1000;
@@ -48,14 +51,17 @@ export function createSessionSupervisor(
 
   const tasks = channels.map(maintain);
   return {
-    initialReady: Promise.all(initial),
+    initialReady,
     tasks,
     close: async () => {
       stopped = true;
       resolveStop();
       const closing = await Promise.allSettled(
         channels.map(async (channel) => {
-          channel.resolveTone();
+          if (!channel.tonePlayed)
+            channel.rejectTone(
+              new Error("Session supervisor stopped before startup tone completed"),
+            );
           await channel.session.close();
         }),
       );

@@ -155,6 +155,39 @@ test("rejects a websocket error before open so the supervisor can retry", async 
   expect(session.healthy()).toBe(false);
 });
 
+test("closes a failed websocket when terminate is unavailable", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
+  let failedSocket;
+  class CloseOnlySocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = 0;
+
+    constructor() {
+      super();
+      failedSocket = this;
+      queueMicrotask(() => this.emit("error", new Error("opening failed")));
+    }
+
+    close() {
+      this.readyState = CloseOnlySocket.CLOSED;
+      this.emit("close");
+    }
+  }
+  const session = createZelloSession(
+    {
+      CHANNEL: "PD",
+      USERNAME: "radio",
+      PASSWORD: "pw",
+      ISSUER: "issuer",
+      PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+    },
+    CloseOnlySocket,
+  );
+  await expect(session.connect()).rejects.toThrow("opening failed");
+  expect(failedSocket.readyState).toBe(CloseOnlySocket.CLOSED);
+});
+
 test("rejects a websocket close before open", async () => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
   class ClosingSocket extends EventEmitter {

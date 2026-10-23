@@ -86,6 +86,43 @@ test("stops a stream that starts during shutdown if the session recovers", async
   expect(stopStream).toHaveBeenCalledWith(12);
 });
 
+test("stops an abandoned stream after the Zello session reconnects", async () => {
+  let healthy = true;
+  let now = 0;
+  let idleCallback;
+  let streamId = 0;
+  const events = [];
+  const transmission = createAudioTransmission({
+    rnnoise,
+    idleMs: 500,
+    now: () => now,
+    setTimeoutImpl: (callback) => ((idleCallback = callback), 1),
+    clearTimeoutImpl: () => {},
+    createProcessor: () => ({ write: () => {}, finishTransmission: () => {}, close: () => {} }),
+    session: {
+      healthy: () => healthy,
+      startStream: async () => {
+        streamId += 1;
+        events.push(`start:${streamId}`);
+        return streamId;
+      },
+      sendAudio: () => {},
+      stopStream: async (id) => events.push(`stop:${id}`),
+    },
+  });
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = false;
+  now = 600;
+  idleCallback();
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = true;
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  expect(events.slice(0, 3)).toEqual(["start:1", "stop:1", "start:2"]);
+  await transmission.close();
+});
+
 test("reports processor write failures", async () => {
   const onError = jest.fn();
   const transmission = createAudioTransmission({

@@ -21,7 +21,9 @@ export function createAudioTransmission({
   });
   let pcm = Buffer.alloc(0);
   let streamId;
+  let abandonedStreamIds = [];
   let starting;
+  let stoppingAbandoned;
   let idleTimer;
   let lastPacketAt = 0;
   let retryAt = 0;
@@ -30,7 +32,8 @@ export function createAudioTransmission({
 
   function flush() {
     if (!session.healthy()) {
-      if (!closed) streamId = undefined;
+      if (streamId) abandonedStreamIds.push(streamId);
+      streamId = undefined;
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
       return;
@@ -46,8 +49,34 @@ export function createAudioTransmission({
     }
   }
 
+  function stopAbandonedStreams() {
+    if (stoppingAbandoned || !session.healthy() || abandonedStreamIds.length === 0)
+      return stoppingAbandoned;
+    const ids = abandonedStreamIds;
+    abandonedStreamIds = [];
+    stoppingAbandoned = Promise.all(ids.map((id) => session.stopStream(id).catch(onError))).finally(
+      () => {
+        stoppingAbandoned = undefined;
+        if (!closed) begin();
+      },
+    );
+    return stoppingAbandoned;
+  }
+
   function begin() {
-    if (streamId || starting || !session.healthy() || now() < retryAt) return;
+    if (
+      closed ||
+      streamId ||
+      starting ||
+      stoppingAbandoned ||
+      !session.healthy() ||
+      now() < retryAt
+    )
+      return;
+    if (abandonedStreamIds.length) {
+      stopAbandonedStreams()?.catch(onError);
+      return;
+    }
     starting = session
       .startStream()
       .then((id) => {
@@ -86,8 +115,10 @@ export function createAudioTransmission({
     closed = true;
     clearTimeoutImpl(idleTimer);
     if (starting) await starting;
+    await stopAbandonedStreams();
     lastPacketAt = 0;
     await end(true);
+    await stopAbandonedStreams();
     processor.close();
   }
 

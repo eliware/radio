@@ -52,7 +52,8 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
     currentSocket.on("error", (error) => {
       online = false;
       currentCommands.close(error);
-      currentSocket.terminate?.();
+      if (typeof currentSocket.terminate === "function") currentSocket.terminate();
+      else currentSocket.close();
     });
     await opening;
     try {

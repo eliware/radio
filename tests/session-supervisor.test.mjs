@@ -134,6 +134,22 @@ test("keeps initial readiness pending until startup tone playback succeeds", asy
   await supervisor.close();
 });
 
+test("rejects initial readiness when shutdown interrupts the startup tone", async () => {
+  const item = channel("PD");
+  const supervisor = createSessionSupervisor([item], {
+    wait: () => new Promise(() => {}),
+    onError: () => {},
+    log: quietLog,
+    playTone: async () => {
+      throw new Error("tone failed");
+    },
+  });
+  for (let attempt = 0; attempt < 20 && item.session.connected === 0; attempt += 1)
+    await Promise.resolve();
+  await supervisor.close();
+  await expect(supervisor.initialReady).rejects.toThrow("stopped before startup tone completed");
+});
+
 test("waits for asynchronous session shutdown to finish", async () => {
   const item = channel("PD");
   const closeSession = item.session.close;
