@@ -10,12 +10,14 @@ const rnnoise = {
 class FakeSocket extends EventEmitter {
   bind(port, _host, callback) {
     this.port = port || 12001;
+    this.bound = true;
     callback();
   }
   address() {
     return { port: this.port };
   }
   close() {
+    if (!this.bound) throw new Error("ERR_SOCKET_DGRAM_NOT_RUNNING");
     this.closed = true;
   }
 }
@@ -87,7 +89,7 @@ test("rejects UDP bind errors and reports them", async () => {
   });
   await expect(input.listen()).rejects.toThrow("bind failed");
   expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "bind failed" }));
-  await input.close();
+  await expect(input.close()).resolves.toBeUndefined();
 });
 
 test("rejects synchronous UDP bind failures", async () => {

@@ -51,7 +51,12 @@ export async function createRadioRuntime({
       onError: reportError,
     }),
   );
-  await Promise.all(inputs.map((input) => input.listen()));
+  const listening = await Promise.allSettled(inputs.map((input) => input.listen()));
+  const listenFailure = listening.find(({ status }) => status === "rejected");
+  if (listenFailure) {
+    await Promise.allSettled(inputs.map((input) => input.close()));
+    throw listenFailure.reason;
+  }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
   const sessions = makeSessionSupervisor(channels, { wait, onError: reportError, log });
   const airband = makeAirbandSupervisor({

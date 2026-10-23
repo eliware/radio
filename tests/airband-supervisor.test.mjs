@@ -150,6 +150,7 @@ test("waits for missing hardware and reports child process errors", async () => 
 
 test("reports a pre-spawn child error as an error state", async () => {
   let releaseWait;
+  let child;
   const failed = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
@@ -158,7 +159,7 @@ test("reports a pre-spawn child error as an error state", async () => {
     log: quietLog,
     present: async () => true,
     spawnProcess: () => {
-      const child = new EventEmitter();
+      child = new EventEmitter();
       queueMicrotask(() => child.emit("error", new Error("spawn event failed")));
       return child;
     },
@@ -166,6 +167,7 @@ test("reports a pre-spawn child error as an error state", async () => {
   for (let attempt = 0; attempt < 20 && failed.status().state !== "error"; attempt += 1)
     await Promise.resolve();
   expect(failed.status()).toMatchObject({ state: "error", error: "spawn event failed" });
+  expect(child.listenerCount("close")).toBe(0);
   releaseWait();
   await failed.close();
 });

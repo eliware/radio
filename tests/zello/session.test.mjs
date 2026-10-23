@@ -9,6 +9,7 @@ class FakeSocket extends EventEmitter {
   commands = [];
   binaries = [];
   rejectLogon = false;
+  streamId = 23;
 
   constructor() {
     super();
@@ -30,7 +31,7 @@ class FakeSocket extends EventEmitter {
       response.success = false;
       response.error = "rejected";
     }
-    if (command.command === "start_stream") response.stream_id = 23;
+    if (command.command === "start_stream") response.stream_id = this.streamId;
     queueMicrotask(() => this.emit("message", Buffer.from(JSON.stringify(response))));
   }
 
@@ -121,4 +122,39 @@ test("closes a rejected login and handles socket errors", async () => {
   const unused = createZelloSession(config);
   unused.close();
   expect(unused.healthy()).toBe(false);
+});
+
+test("requires a valid stream id and accepts opaque ids", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
+  const config = {
+    CHANNEL: "PD",
+    USERNAME: "radio",
+    PASSWORD: "pw",
+    ISSUER: "issuer",
+    PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+  };
+  let socket;
+  class OpaqueSocket extends FakeSocket {
+    constructor() {
+      super();
+      this.streamId = "stream-23";
+      socket = this;
+    }
+  }
+  const session = createZelloSession(config, OpaqueSocket);
+  await session.connect();
+  await expect(session.startStream()).resolves.toBe("stream-23");
+  session.close();
+
+  class InvalidSocket extends FakeSocket {
+    constructor() {
+      super();
+      this.streamId = null;
+    }
+  }
+  const invalid = createZelloSession(config, InvalidSocket);
+  await invalid.connect();
+  await expect(invalid.startStream()).rejects.toThrow("invalid stream_id");
+  invalid.close();
+  expect(socket).toBeDefined();
 });

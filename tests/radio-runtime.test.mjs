@@ -87,3 +87,28 @@ test("applies standard settings without opening services when no channel files a
   ).rejects.toThrow("missing config");
   expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
 });
+
+test("closes every UDP input when any listener fails to bind", async () => {
+  let count = 0;
+  const close = jest.fn();
+  const runtime = createRadioRuntime({
+    configPaths: ["pd", "fd"],
+    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+    loadNoise: async () => ({ frameSize: 480 }),
+    writeConfig: async () => {},
+    makeInput: () => {
+      count += 1;
+      return {
+        listen: async () => {
+          if (count === 2) throw new Error("UDP port is busy");
+        },
+        close,
+      };
+    },
+    makeSessionSupervisor: () => {
+      throw new Error("must not start sessions before listeners bind");
+    },
+  });
+  await expect(runtime).rejects.toThrow("UDP port is busy");
+  expect(close).toHaveBeenCalledTimes(2);
+});

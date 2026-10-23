@@ -69,6 +69,7 @@ export function createAudioTransmission({
   }
 
   async function end(force = false) {
+    if (closed && !force) return;
     if (!force && now() - lastPacketAt < idleMs) return;
     if (starting) await starting;
     if (!force && now() - lastPacketAt < idleMs) return;

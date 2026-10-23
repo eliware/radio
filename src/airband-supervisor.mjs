@@ -41,12 +41,23 @@ export function createAirbandSupervisor({
           stdio: "inherit",
         });
         const result = await new Promise((resolve) => {
-          child.once("spawn", () => {
+          const onSpawn = () => {
             state = "running";
             log.info("RTLSDR-Airband started");
-          });
-          child.once("error", (cause) => resolve({ cause }));
-          child.once("close", (code, signal) => resolve({ code, signal }));
+          };
+          const onError = (cause) => {
+            child.off("spawn", onSpawn);
+            child.off("close", onClose);
+            resolve({ cause });
+          };
+          const onClose = (code, signal) => {
+            child.off("spawn", onSpawn);
+            child.off("error", onError);
+            resolve({ code, signal });
+          };
+          child.once("spawn", onSpawn);
+          child.once("error", onError);
+          child.once("close", onClose);
         });
         child = undefined;
         if (stopped) break;

@@ -29,9 +29,12 @@ export function createSessionSupervisor(
         log.info("Connected to Zello channel", { channel: channel.name });
         const connectedAt = Date.now();
         if (!channel.tonePlayed) {
-          await playTone(channel.session, Number(channel.config.TONE), wait);
-          channel.tonePlayed = true;
-          channel.resolveTone();
+          try {
+            await playTone(channel.session, Number(channel.config.TONE), wait);
+            channel.tonePlayed = true;
+          } finally {
+            channel.resolveTone();
+          }
         }
         await channel.session.waitForClose();
         channel.status = "disconnected";

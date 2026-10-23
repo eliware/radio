@@ -118,6 +118,7 @@ test("ignores audio after close and tolerates close without a healthy session", 
 });
 
 test("closes an active stream even when shutdown happens before the idle timeout", async () => {
+  let idleCallback;
   const processor = {
     write: jest.fn(),
     finishTransmission: jest.fn(),
@@ -128,6 +129,8 @@ test("closes an active stream even when shutdown happens before the idle timeout
     rnnoise,
     idleMs: 500,
     now: () => 1000,
+    setTimeoutImpl: (callback) => ((idleCallback = callback), 1),
+    clearTimeoutImpl: () => {},
     session: {
       healthy: () => true,
       startStream: async () => 9,
@@ -141,6 +144,9 @@ test("closes an active stream even when shutdown happens before the idle timeout
   expect(stopStream).toHaveBeenCalledWith(9);
   expect(processor.finishTransmission).toHaveBeenCalled();
   expect(processor.close).toHaveBeenCalledTimes(1);
+  idleCallback();
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(processor.finishTransmission).toHaveBeenCalledTimes(1);
 });
 
 test("does not end a transmission before the idle interval expires", async () => {

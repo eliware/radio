@@ -27,6 +27,7 @@ export function createAudioInput({
     setTimeoutImpl,
     clearTimeoutImpl,
   });
+  let listening = false;
   socket.on("message", transmission.receive);
   socket.on("error", onError);
   const listen = () =>
@@ -39,6 +40,7 @@ export function createAudioInput({
       try {
         socket.bind(port, "127.0.0.1", () => {
           socket.off("error", failed);
+          listening = true;
           resolve(socket.address().port);
         });
       } catch (error) {
@@ -47,7 +49,10 @@ export function createAudioInput({
     });
   const close = async () => {
     await transmission.close();
-    socket.close();
+    if (listening) {
+      listening = false;
+      socket.close();
+    }
   };
   return { close, listen };
 }

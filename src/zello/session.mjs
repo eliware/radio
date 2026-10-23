@@ -64,7 +64,13 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
       codec_header: codecHeader(),
       packet_duration: 20,
     });
-    return response.stream_id;
+    const streamId = response.stream_id;
+    if (
+      (typeof streamId === "string" && streamId.trim()) ||
+      (Number.isSafeInteger(streamId) && streamId > 0)
+    )
+      return streamId;
+    throw new Error("Zello start_stream returned an invalid stream_id");
   }
   async function stopStream(streamId) {
     await commands.request({
