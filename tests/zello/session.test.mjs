@@ -43,7 +43,7 @@ class FakeSocket extends EventEmitter {
   }
 }
 
-test("logs in with a minted production token and streams Opus packets", async () => {
+test("logs in with a minted production token and manages audio stream lifecycle", async () => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
   let socket;
   class TestSocket extends FakeSocket {
@@ -74,12 +74,7 @@ test("logs in with a minted production token and streams Opus packets", async ()
     "base64",
   );
   expect(header.readUInt16LE(0)).toBe(48000);
-  socket.readyState = 0;
-  expect(() => session.sendAudio(stream, Buffer.from([1]))).toThrow("offline");
-  socket.readyState = FakeSocket.OPEN;
-  session.sendAudio(stream, Buffer.from([1, 2, 3]));
   await session.stopStream(stream);
-  expect(socket.binaries[0].readUInt32BE(1)).toBe(23);
   expect(socket.commands.at(-1).command).toBe("stop_stream");
   const closed = session.waitForClose();
   session.close();

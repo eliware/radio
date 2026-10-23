@@ -20,3 +20,9 @@ test("preserves safe primitive metadata", () => {
   expect(sanitizeMetadata(false, [], [])).toBe(false);
   expect(sanitizeMetadata("ordinary", [], [])).toBe("ordinary");
 });
+
+test("uses the shared error text redactor for nested values", () => {
+  expect(sanitizeMetadata({ nested: { message: "shared-secret" } }, ["shared-secret"], [])).toEqual(
+    { nested: { message: "[REDACTED]" } },
+  );
+});

@@ -2,12 +2,18 @@ import WebSocket from "ws";
 import { createAuthToken } from "./auth.mjs";
 import { codecHeader } from "../audio/codec.mjs";
 import { createZelloCommands } from "./commands.mjs";
+import { createZelloAudioSender } from "./audio-sender.mjs";
 
 export function createZelloSession(config, WebSocketImpl = WebSocket) {
   let socket;
   let online = false;
   let commands;
   let closePromise = Promise.resolve();
+  const sendAudio = createZelloAudioSender({
+    getSocket: () => socket,
+    isOnline: () => online,
+    openState: WebSocketImpl.OPEN,
+  });
 
   async function connect() {
     socket?.close();
@@ -66,14 +72,6 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
       channel: config.CHANNEL,
       stream_id: streamId,
     });
-  }
-  function sendAudio(streamId, packet) {
-    if (!online || socket.readyState !== WebSocketImpl.OPEN) throw new Error("Zello is offline");
-    const header = Buffer.alloc(9);
-    header.writeUInt8(1, 0);
-    header.writeUInt32BE(streamId, 1);
-    header.writeUInt32BE(0, 5);
-    socket.send(Buffer.concat([header, packet]), { binary: true });
   }
   function close() {
     online = false;

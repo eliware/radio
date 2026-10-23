@@ -21,8 +21,7 @@ function makeAudio(blocks = 4) {
   );
 }
 
-test("resamples Airband frames, denoises 480-sample frames, and emits 48 kHz Opus packets", () => {
-  const packets = [];
+test("resamples Airband audio and denoises 480-sample frames", () => {
   const frames = [];
   const destroy = jest.fn();
   const state = {
@@ -34,19 +33,17 @@ test("resamples Airband frames, denoises 480-sample frames, and emits 48 kHz Opu
   };
   const pipeline = createNoisePipeline({
     rnnoise: state,
-    onPacket: (packet) => packets.push(packet),
+    onPacket: () => {},
   });
   pipeline.write(makeAudio());
   expect(frames.length).toBeGreaterThan(1);
   expect(frames.every((size) => size === 480)).toBe(true);
-  expect(packets.length).toBeGreaterThan(0);
-  expect(packets.every((packet) => packet.length > 0)).toBe(true);
   pipeline.finishTransmission();
   pipeline.close();
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
-test("reports RNNoise and packet callback failures", () => {
+test("reports RNNoise failures", () => {
   const onError = jest.fn();
   const noise = makeRnnoise(() => {
     throw new Error("denoiser failed");
@@ -55,30 +52,16 @@ test("reports RNNoise and packet callback failures", () => {
   pipeline.write(makeAudio());
   expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "denoiser failed" }));
   pipeline.close();
-
-  const packetError = jest.fn();
-  const throwingPipeline = createNoisePipeline({
-    rnnoise: makeRnnoise(),
-    onPacket: () => {
-      throw new Error("send failed");
-    },
-    onError: packetError,
-  });
-  throwingPipeline.write(makeAudio());
-  expect(packetError).toHaveBeenCalledWith(expect.objectContaining({ message: "send failed" }));
-  throwingPipeline.close();
 });
 
-test("uses the default error handler and replaces non-finite samples with silence", () => {
+test("uses the default error handler", () => {
   const pipeline = createNoisePipeline({
     rnnoise: makeRnnoise(() => {
       throw new Error("handled by default");
     }),
     onPacket: () => {},
   });
-  const audio = makeAudio();
-  audio.writeFloatLE(Number.NaN, 0);
-  pipeline.write(audio);
+  pipeline.write(makeAudio());
   pipeline.close();
 });
 

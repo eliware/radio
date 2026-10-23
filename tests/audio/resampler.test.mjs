@@ -48,7 +48,7 @@ test("reports stream errors and rejects malformed or closed writes", () => {
   expect(() => resampler.write(Buffer.alloc(4))).toThrow("closed");
 });
 
-test("reset replaces the stream and shutdown methods are repeatable", () => {
+test("resampler reset replaces the stream and shutdown methods are repeatable", () => {
   const streams = [];
   const resampler = createAudioResampler({
     onPcm: () => {},

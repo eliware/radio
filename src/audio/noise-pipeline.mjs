@@ -1,15 +1,12 @@
-import { createEncoder, encodePcmFrame } from "./codec.mjs";
+import { createAudioPacketizer } from "./packetizer.mjs";
 import { createAudioResampler } from "./resampler.mjs";
-
-const OPUS_FRAME_BYTES = 960 * 2;
 
 export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError = () => {} }) {
   const state = rnnoise.createDenoiseState();
-  const encoder = createEncoder();
   const noiseFrameBytes = rnnoise.frameSize * 2;
   let resampled = Buffer.alloc(0);
-  let encodedPcm = Buffer.alloc(0);
   let closed = false;
+  const packetizer = createAudioPacketizer({ onPacket });
 
   function consume(chunk) {
     try {
@@ -33,14 +30,7 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
       const mixed = frame[i] * rnnoiseMix + original[i] * (1 - rnnoiseMix);
       output.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(mixed))), i * 2);
     }
-    encodedPcm = Buffer.concat([encodedPcm, output]);
-    while (encodedPcm.length >= OPUS_FRAME_BYTES) sendFrame();
-  }
-
-  function sendFrame() {
-    const frame = encodedPcm.subarray(0, OPUS_FRAME_BYTES);
-    encodedPcm = encodedPcm.subarray(OPUS_FRAME_BYTES);
-    onPacket(encodePcmFrame(encoder, frame));
+    packetizer.write(output);
   }
 
   const resampler = createAudioResampler({ onPcm: consume, onError });
@@ -52,7 +42,7 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
     finishTransmission: () => {
       if (closed) return;
       resampled = Buffer.alloc(0);
-      encodedPcm = Buffer.alloc(0);
+      packetizer.reset();
       resampler.reset();
     },
     close: () => {
@@ -60,7 +50,7 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
       closed = true;
       resampler.close();
       state.destroy();
-      encoder.delete();
+      packetizer.close();
     },
   };
 }
