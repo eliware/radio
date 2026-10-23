@@ -1,7 +1,7 @@
 import OpusScript from "opusscript";
 
-export const SAMPLE_RATE = 16000;
-export const FRAME_SAMPLES = 320;
+export const SAMPLE_RATE = 48000;
+export const FRAME_SAMPLES = 960;
 export const FRAME_BYTES = FRAME_SAMPLES * 4;
 
 export function createEncoder() {
@@ -16,6 +16,12 @@ export function encodeFloatFrame(encoder, frame) {
     const value = Number.isFinite(sample) ? Math.max(-1, Math.min(1, sample)) : 0;
     pcm.writeInt16LE(Math.round(value * 32767), i * 2);
   }
+  return encodePcmFrame(encoder, pcm);
+}
+
+export function encodePcmFrame(encoder, pcm) {
+  if (pcm.length !== FRAME_SAMPLES * 2)
+    throw new Error("Audio frame must contain 20 ms of s16le PCM");
   return encoder.encode(pcm, FRAME_SAMPLES);
 }
 

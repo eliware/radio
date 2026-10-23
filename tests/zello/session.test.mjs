@@ -69,6 +69,11 @@ test("logs in with a minted production token and streams Opus packets", async ()
   expect(socket.commands[0].command).toBe("logon");
   expect(socket.commands[0].auth_token.split(".")).toHaveLength(3);
   const stream = await session.startStream();
+  const header = Buffer.from(
+    socket.commands.find((command) => command.command === "start_stream").codec_header,
+    "base64",
+  );
+  expect(header.readUInt16LE(0)).toBe(48000);
   socket.readyState = 0;
   expect(() => session.sendAudio(stream, Buffer.from([1]))).toThrow("offline");
   socket.readyState = FakeSocket.OPEN;

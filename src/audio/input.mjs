@@ -1,16 +1,24 @@
 import { createSocket } from "node:dgram";
-import { FRAME_BYTES, createEncoder, encodeFloatFrame } from "./codec.mjs";
+import { createNoisePipeline } from "./noise-pipeline.mjs";
+
+const INPUT_FRAME_BYTES = 320 * 4;
 
 export function createAudioInput({
   port,
   session,
+  rnnoise,
+  createProcessor = createNoisePipeline,
   idleMs = 500,
   onError = () => {},
   createSocketImpl = createSocket,
   now = Date.now,
 }) {
   const socket = createSocketImpl("udp4");
-  const encoder = createEncoder();
+  const processor = createProcessor({
+    rnnoise,
+    onPacket: (packet) => streamId && session.sendAudio(streamId, packet),
+    onError,
+  });
   let pcm = Buffer.alloc(0);
   let streamId;
   let starting;
@@ -21,13 +29,14 @@ export function createAudioInput({
     if (!session.healthy()) {
       streamId = undefined;
       pcm = Buffer.alloc(0);
+      processor.finishTransmission();
       return;
     }
-    while (streamId && pcm.length >= FRAME_BYTES) {
-      const frame = pcm.subarray(0, FRAME_BYTES);
-      pcm = pcm.subarray(FRAME_BYTES);
+    while (streamId && pcm.length >= INPUT_FRAME_BYTES) {
+      const frame = pcm.subarray(0, INPUT_FRAME_BYTES);
+      pcm = pcm.subarray(INPUT_FRAME_BYTES);
       try {
-        session.sendAudio(streamId, encodeFloatFrame(encoder, frame));
+        processor.write(frame);
       } catch (error) {
         onError(error);
       }
@@ -54,6 +63,7 @@ export function createAudioInput({
     if (now() - lastPacketAt < idleMs) return;
     flush();
     pcm = Buffer.alloc(0);
+    processor.finishTransmission();
     const id = streamId;
     streamId = undefined;
     if (id) await session.stopStream(id).catch(onError);
@@ -80,7 +90,7 @@ export function createAudioInput({
     if (starting) await starting;
     lastPacketAt = 0;
     await end();
-    encoder.delete();
+    processor.close();
     socket.close();
   };
   return { close, listen };

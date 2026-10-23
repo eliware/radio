@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@eliware/common": "^15.0.0",
+    "@eliware/resampler": "^15.0.0",
+    "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "opusscript": "^0.1.1",
     "ws": "^8.22.0"
   },

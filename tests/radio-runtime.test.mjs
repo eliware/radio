@@ -26,13 +26,18 @@ test("builds one runtime from per-channel files and combines readiness", async (
     ]),
   );
   let capturedOptions;
+  const loadedNoise = { frameSize: 480 };
   const runtime = await createRadioRuntime({
     configPaths: ["pd", "fd"],
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+    loadNoise: async () => loadedNoise,
     writeConfig: async (_path, text) => events.push(text),
     log,
     makeSession: () => ({ healthy: () => true, close: () => {} }),
-    makeInput: () => ({ listen: async () => {}, close: async () => {} }),
+    makeInput: (options) => {
+      expect(options.rnnoise).toBe(loadedNoise);
+      return { listen: async () => {}, close: async () => {} };
+    },
     present: () => true,
     spawnProcess: () => {},
     makeSessionSupervisor: (_channels, options) => {

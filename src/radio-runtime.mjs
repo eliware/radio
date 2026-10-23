@@ -3,6 +3,7 @@ import { errorDetails, logger, rememberSecrets } from "./logger.mjs";
 import { getRuntimePaths } from "./runtime-paths.mjs";
 import { createAirbandSupervisor } from "./airband-supervisor.mjs";
 import { createAudioInput } from "./audio/input.mjs";
+import { loadRnnoise } from "./audio/rnnoise.mjs";
 import { createAirbandConfig, loadChannelConfig } from "./channel-config.mjs";
 import { createSessionSupervisor } from "./session-supervisor.mjs";
 import { createZelloSession } from "./zello/session.mjs";
@@ -17,6 +18,7 @@ export async function createRadioRuntime({
   writeConfig = writeFile,
   makeSession = createZelloSession,
   makeInput = createAudioInput,
+  loadNoise = loadRnnoise,
   makeSessionSupervisor = createSessionSupervisor,
   makeAirbandSupervisor = createAirbandSupervisor,
   present,
@@ -28,6 +30,7 @@ export async function createRadioRuntime({
 }) {
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
   rememberSecrets(configs);
+  const rnnoise = await loadNoise();
   const reportError =
     onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
   await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
@@ -39,7 +42,7 @@ export async function createRadioRuntime({
     tonePlayed: false,
   }));
   const inputs = channels.map(({ session }, index) =>
-    makeInput({ port: 12001 + index, session, onError: reportError }),
+    makeInput({ port: 12001 + index, session, rnnoise, onError: reportError }),
   );
   await Promise.all(inputs.map((input) => input.listen()));
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });

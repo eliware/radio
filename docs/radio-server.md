@@ -11,8 +11,12 @@ Keep both files private with mode `600`. Compose mounts them read-only. They are
 Git and from the Docker build context.
 
 The receiver requires two distinct SDR serials. It checks for both devices before launching the
-single Airband process. The process applies NFM demodulation and CTCSS filtering, then sends each
-channel's 16 kHz mono PCM to a private loopback UDP socket.
+single Airband process. Airband applies NFM demodulation and CTCSS filtering. It uses a 20 dB tuner
+amplification, an 8 kHz channel filter, and 300 µs de-emphasis.
+
+It sends 16 kHz mono float PCM to a loopback
+UDP socket. Node converts samples to signed PCM and resamples them to 48 kHz. RNNoise keeps its own
+state for each channel. Zello receives mono Opus at 48 kHz.
 
 ## Zello connections
 

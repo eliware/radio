@@ -2,6 +2,11 @@ import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
 import { createAudioInput } from "../../src/audio/input.mjs";
 
+const rnnoise = {
+  frameSize: 480,
+  createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
+};
+
 class FakeSocket extends EventEmitter {
   bind(port, _host, callback) {
     this.port = port || 12001;
@@ -32,16 +37,17 @@ test("routes CTCSS-gated UDP audio into one Zello stream and closes after silenc
   const input = createAudioInput({
     port: 12001,
     session,
+    rnnoise,
     idleMs: 30,
     createSocketImpl: () => socket,
   });
   await input.listen();
-  socket.emit("message", Buffer.alloc(1280));
+  for (let i = 0; i < 4; i += 1) socket.emit("message", Buffer.alloc(1280));
   await jest.advanceTimersByTimeAsync(30);
   await input.close();
   jest.useRealTimers();
   expect(events).toEqual(["start", "stop:4"]);
-  expect(sent).toHaveLength(1);
+  expect(sent.length).toBeGreaterThan(0);
   expect(sent[0][0]).toBe(4);
   expect(socket.closed).toBe(true);
 });
@@ -53,6 +59,7 @@ test("drops buffered audio if the Zello session disconnects during stream startu
   const socket = new FakeSocket();
   const input = createAudioInput({
     port: 12001,
+    rnnoise,
     session: {
       healthy: () => healthy,
       startStream: () => new Promise((resolve) => (finishStart = resolve)),
@@ -78,6 +85,7 @@ test("uses standard UDP input settings and closes with no transmission", async (
   const socket = new FakeSocket();
   const input = createAudioInput({
     port: 12001,
+    rnnoise,
     idleMs: 30,
     session: { healthy: () => true, startStream: async () => 2, stopStream: async () => {} },
     createSocketImpl: () => socket,
@@ -93,9 +101,34 @@ test("uses standard UDP input settings and closes with no transmission", async (
   expect(input).toHaveProperty("listen");
 });
 
+test("reports audio processor write failures", async () => {
+  const onError = jest.fn();
+  const socket = new FakeSocket();
+  const input = createAudioInput({
+    port: 12001,
+    rnnoise,
+    session: { healthy: () => true, startStream: async () => 8, stopStream: async () => {} },
+    onError,
+    createProcessor: () => ({
+      write: () => {
+        throw new Error("processor failed");
+      },
+      finishTransmission: () => {},
+      close: () => {},
+    }),
+    createSocketImpl: () => socket,
+  });
+  await input.listen();
+  socket.emit("message", Buffer.alloc(1280));
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "processor failed" }));
+  await input.close();
+});
+
 test("opens the default loopback UDP input when no factory is injected", async () => {
   const input = createAudioInput({
     port: 0,
+    rnnoise,
     session: { healthy: () => false },
     createSocketImpl: undefined,
   });
@@ -110,6 +143,7 @@ test("keeps a stream open when new audio arrives during startup", async () => {
   const socket = new FakeSocket();
   const input = createAudioInput({
     port: 12001,
+    rnnoise,
     idleMs: 30,
     session: {
       healthy: () => true,

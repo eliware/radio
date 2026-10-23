@@ -44,9 +44,10 @@ export function createAirbandConfig(channels) {
     const port = 12001 + index;
     const frequency = Number(channel.FREQUENCY_MHZ).toFixed(4);
     const tone = Number(channel.CTCSS_HZ).toFixed(1);
-    return `{ type = "rtlsdr"; serial = "${channel.SDR_SERIAL}"; gain = 25;
+    return `{ type = "rtlsdr"; serial = "${channel.SDR_SERIAL}"; gain = 20;
       sample_rate = 1.024; centerfreq = ${frequency}; channels: ({ freq = ${frequency};
-      modulation = "nfm"; ctcss = ${tone}; notch = ${tone}; outputs: ({
+      modulation = "nfm"; ctcss = ${tone}; notch = ${tone}; bandwidth = 8000;
+      tau = 300; outputs: ({
       type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = ${port};
       continuous = false; }); }); }`;
   });
