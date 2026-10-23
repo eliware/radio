@@ -6,7 +6,9 @@ directives:
       - Provide a status page at the root route.
       - Provide health and readiness routes.
       - Read the listening port from PORT and default to 3000.
-      - Build and run in a Docker container.
-      - Keep SDR processing and live audio out of this scaffold.
+      - Run the player, SDR receiver, and Icecast as three Docker services.
+      - Run Node.js health and readiness supervisors as PID 1 in SDR and Icecast containers.
+      - Apply NFM and configured CTCSS squelch before streaming each channel.
+      - Keep SDR serial numbers and stream credentials in local environment configuration.
     donts:
-      - Do not add receiver processing or live audio to this scaffold.
+      - Do not add ADS-B or aircraft-tracking features.

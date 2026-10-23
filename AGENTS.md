@@ -6,7 +6,7 @@ Maintain the private Radio web application.
 
 ## Scope and boundaries
 
-Keep this repository focused on a web interface for local radio channels. SDR processing and audio output are not in this scaffold.
+Keep this repository focused on a private web player and local NFM receiver services. Do not add ADS-B, aircraft tracking, or public data-sharing features.
 
 ## Layout
 

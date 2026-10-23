@@ -27,7 +27,8 @@ Web-based SDR streaming
 
 ## Features
 
-Radio provides a small status page and health routes for the future radio application. SDR capture and live audio are not part of this scaffold.
+Radio provides a private player for two NFM channels. RTLSDR-Airband applies configured
+CTCSS squelch and sends channel audio to Icecast.
 
 ## Requirements
 
@@ -35,11 +36,13 @@ Use Node.js 26 or later and npm. Docker Compose is available for container deplo
 
 ## Setup
 
-Run `npm ci` to install dependencies. Copy `.env.example` to `.env` to set the listening port.
+Run `npm ci` to install web dependencies. Docker Compose loads the local `.env`, which contains
+channel settings, dongle serials, and the private Icecast source password. Do not commit it.
 
 ## Usage
 
-Run `npm start` to launch the web server. Read the [release notes](RELEASE_NOTES.md) for changes.
+Run `npm start` to launch only the web player. Use Docker Compose to run the full player,
+receiver, and Icecast stack. Read the [release notes](RELEASE_NOTES.md) for changes.
 
 ## Development
 
@@ -51,7 +54,9 @@ Run `npm test` to validate the repository. Run `npm run build` to create the bro
 
 ## Troubleshooting
 
-Check `/health` for process status and `/ready` for readiness. Read container logs with `docker compose logs radio`.
+Check `/health` and `/ready` for web status. The SDR and Icecast supervisors expose the same
+routes internally on ports `9101` and `9102`. Read logs with
+`docker compose logs -f radio sdr icecast`.
 
 ## Security
 
@@ -59,23 +64,29 @@ The status page has no authentication. Keep the app on a trusted network.
 
 ## Configuration
 
-Set `PORT` in `.env` or the process environment. The default is `3000`. Valid values are integers from `1` through `65535`.
+Set the spare SDR dongle serials and a random `ICECAST_SOURCE_PASSWORD` in `.env`. Police and
+Fire frequency and PL values are also read from `.env`. Set `PORT` to change the player port.
+The default is `3000`.
 
 ## Operations
 
-Use `docker compose up -d --build` to build and start the container. Use `docker compose down` to stop it.
+Use `docker compose up -d --build` to build and start all three containers. Use
+`docker compose down` to stop them.
 
 ## Routes
 
 - `GET /` serves the status page.
 - `GET /health` reports process health.
 - `GET /ready` reports application readiness.
+- `GET /streams/police.mp3` proxies the Police audio stream.
+- `GET /streams/fire.mp3` proxies the Fire audio stream.
 
 Both status routes return HTTP 200 and a JSON status value.
 
 ## Assets
 
-The app serves files from `public/` and `dist/`. Webpack writes the browser bundle to `dist/client.js`.
+The app serves files from `public/` and `dist/`. Webpack writes the browser bundle to
+`dist/client.js`. The player page has separate Police and Fire audio controls.
 
 ## Development server
 
@@ -87,7 +98,9 @@ Run `npm run build` to bundle the readiness status text.
 
 ## Deployment
 
-Run `docker compose up -d --build`. Confirm `http://localhost:3000/health` and `http://localhost:3000/ready` return status 200.
+Run `docker compose up -d --build`. On this server, open `http://localhost:3001`.
+Radar uses port `3000`. Confirm the player health routes return status 200. The SDR remains
+unready until both spare dongle serial numbers are configured.
 
 ## Support
 

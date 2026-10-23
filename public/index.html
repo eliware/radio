@@ -18,8 +18,20 @@
   </head>
   <body>
     <main>
-      <h1>Radio service</h1>
+      <h1>Radio</h1>
       <p>Server status: <span id="server-status">Checking</span></p>
+      <section aria-labelledby="police-heading">
+        <h2 id="police-heading">Police</h2>
+        <audio controls preload="none" src="/streams/police.mp3">
+          Audio playback is unavailable.
+        </audio>
+      </section>
+      <section aria-labelledby="fire-heading">
+        <h2 id="fire-heading">Fire</h2>
+        <audio controls preload="none" src="/streams/fire.mp3">
+          Audio playback is unavailable.
+        </audio>
+      </section>
       <p><a href="/health">Health</a> · <a href="/ready">Readiness</a></p>
     </main>
     <script src="/client.js"></script>
