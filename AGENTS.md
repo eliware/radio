@@ -2,34 +2,39 @@
 
 ## Project
 
-Maintain the private Radio-to-Zello NBFM bridge.
+Eliware maintains the NBFM receiver audio bridge to Zello channels.
 
 ## Scope and boundaries
 
-Keep this repository focused on local NFM receiver services and private Zello channel feeds. Do not add ADS-B, aircraft tracking, or public data-sharing features.
+Keep this repository focused on local NFM reception and private Zello channel feeds.
 
 ## Layout
 
-Keep source in `src/`, launchers in `bin/`, tests in `tests/`, docs in `docs/`, and specifications in `specs/`. Mirror each `.mjs` source file with one test file under `tests/`.
+Keep implementation in `src/`, launchers in `bin/`, tests in `tests/`, fixtures in
+`test-fixtures/`, documentation in `docs/`, and specifications in `specs/`. Mirror each source
+`.mjs` file with one same-path `.test.mjs` file under `tests/`.
 
 ## Development
 
-Use Node.js 26 or later, npm, and native ESM. Keep source files under 100 lines and test files under 200 lines.
+Use Node.js 26 or later, npm, and native ESM.
 
 ## Validation
 
-Run `npm ci`, then `npm test`. Run `npm run lint`, `npm run audit`, `npm run format`, and `npm run format:check` for focused checks.
+Run `npm ci` and `npm test` for aggregate validation. Run `npm run lint`, `npm run audit`,
+`npm run format`, and `npm run format:check` as focused checks.
 
 ## Security
 
-Keep secrets, tokens, private keys, and credentials out of source and package files.
+Keep account credentials and private keys out of tracked files.
 
 ## Changes
 
-Document supported workflows, runtime settings, and how to start and stop the app. After commits to the running app, run `docker compose up -d --build` on Linux and check `/health` and `/ready`.
+Keep README.md and docs/ current when runtime behavior changes.
 
 ## Application
 
-Keep implementation under `src/` and launchers under `bin/`. Validate settings before opening connections. Make shutdown repeatable.
-
-Run focused tests first during development. Run one test file with `npm test -- tests/path/to/example.test.mjs`. Run multiple test files with `npm test -- tests/path/to/first.test.mjs tests/path/to/second.test.mjs`. Prevent repeated full-suite runs during development. Run the full `npm test` suite for final validation before a commit, milestone, or release.
+Run focused tests first during development.
+Run one test file with `npm test -- tests/path/to/example.test.mjs`.
+Run multiple test files with `npm test -- tests/path/to/first.test.mjs tests/path/to/second.test.mjs`.
+Prevent repeated full-suite runs during development.
+Run the full `npm test` suite for final validation before a commit, milestone, or release.

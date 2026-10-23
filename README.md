@@ -22,34 +22,28 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio receives two local NBFM channels and forwards CTCSS-gated audio to their Zello channels.
-Node.js supervises one RTLSDR-Airband process and keeps one Zello WebSocket connected for each
-channel. The sockets stay connected while the receivers are idle.
-
-The receiver sends a one-second configured tone to both channels at container startup. Runtime
-audio uses the CTCSS squelch and notch settings from each channel file.
+Radio forwards two local NBFM receiver channels to their matching Zello channels.
 
 ## Requirements
 
-Use Node.js 26 or later and npm for local development. Container deployment uses Docker Compose.
-Two RTL-SDR dongles and production Zello issuer credentials are required.
+Runtime needs a Linux Docker Compose host, two RTL-SDR dongles, and production Zello credentials.
+Use Node.js 26 or later and npm for local development.
 
 ## Setup
 
-Copy `.env.example` to `.env.pd` and `.env.fd`, fill in each channel account and SDR value, then
-set both private files to mode `600`. Follow the [end-user setup guide](docs/radio-server.md) for
-field meanings, accepted values, and startup checks.
+Run `npm ci` for development. For deployment, copy `.env.example` to `.env.pd` and `.env.fd`, set
+both files to mode `600`, and fill in channel values. See [the setup guide](docs/radio-server.md).
 
 ## Usage
 
-Run `docker compose up -d --build` to start the bridge. Read the [release notes](RELEASE_NOTES.md)
-for changes. Check the [documentation index](docs/README.md) and [specifications](specs/README.md)
-for operating details and repository requirements.
+Start the bridge with `docker compose up -d --build`. Read [release notes](RELEASE_NOTES.md) for
+changes. Find operating details in [the guide](docs/README.md) and repository rules in
+[specifications](specs/README.md).
 
 ## Development
 
-Read [AGENTS.md](AGENTS.md) before changing source files. Implementation lives in `src/`, the
-container entry point is `bin/zello-radio.mjs`, and tests live in `tests/`.
+Read [AGENTS.md](AGENTS.md) before changing source files. Implementation lives in `src/`, launchers
+in `bin/`, and tests in `tests/`.
 
 ## Testing
 
@@ -58,35 +52,24 @@ Run `npm test` for repository validation. Run `npm run format` to apply formatti
 
 ## Troubleshooting
 
-Read container output with `docker compose logs -f radio`. `/health` responds while the Node.js
-supervisor runs. `/ready` succeeds only when RTLSDR-Airband runs and both Zello sessions are
-connected and logged in.
+See [troubleshooting guidance](docs/radio-server.md#troubleshooting) and inspect `docker compose`
+logs. `/health` shows if the status server responds. `/ready` shows if the receiver
+and both Zello sessions are online.
 
 ## Security
 
-Keep `.env.pd` and `.env.fd` private. They contain account passwords and signing keys. The files
-are excluded from Git and the Docker build context.
+Keep `.env.pd` and `.env.fd` private. They hold account passwords and signing keys. Git and the
+Docker build context exclude these files.
 
 ## Configuration
 
-Each channel file contains `CHANNEL`, `USERNAME`, `PASSWORD`, `ISSUER`, `PRIVATE_KEY`, `SDR_SERIAL`,
-`FREQUENCY_MHZ`, `CTCSS_HZ`, `TONE`, and `UDP_PORT`. `RNNOISE` sets the share of processed audio
-and defaults to 100. Radio signs a production JWT with `ISSUER` and `PRIVATE_KEY`. Do not use a
-Sample Development Token. See [channel settings](docs/radio-server.md#channel-settings) for every
-field and its valid values.
+Channel files define Zello accounts, signing keys, SDR devices, frequencies, CTCSS tones, UDP
+numbers, and RNNoise level. See [all settings](docs/radio-server.md#channel-settings).
 
 ## Operations
 
-Compose runs one container with Node.js as PID 1 and one RTLSDR-Airband process. The container
-checks for both dongle serials, connects to Zello, then starts the receiver. Each Zello socket stays
-open across radio transmissions and uses exponential reconnect delays capped at five minutes.
-
-The status endpoints use port `1400`, bound to localhost. Compose mounts both channel files as
-read-only and passes USB devices through `/dev/bus/usb`. Run `docker compose down` to stop the bridge.
-
-Logs are timestamped JSON records with `debug`, `info`, `warn`, and `error` levels. Set `LOG_LEVEL`
-to set the minimum output level. The default is `info`. The logger redacts credential fields and
-known values from channel configuration files.
+See [container operations](docs/radio-server.md#operations) for start, update, logging, and stop
+commands.
 
 ## Support
 
