@@ -26,7 +26,6 @@ export async function createRadioRuntime({
   present,
   spawnProcess,
   wait = pause,
-  playTone,
   onError,
   log = logger,
 }) {
@@ -54,7 +53,7 @@ export async function createRadioRuntime({
   );
   await Promise.all(inputs.map((input) => input.listen()));
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
-  const sessions = makeSessionSupervisor(channels, { wait, playTone, onError: reportError, log });
+  const sessions = makeSessionSupervisor(channels, { wait, onError: reportError, log });
   const airband = makeAirbandSupervisor({
     configs,
     configPath: airbandPath,

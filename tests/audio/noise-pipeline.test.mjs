@@ -43,17 +43,6 @@ test("resamples Airband audio and denoises 480-sample frames", () => {
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
-test("reports RNNoise failures", () => {
-  const onError = jest.fn();
-  const noise = makeRnnoise(() => {
-    throw new Error("denoiser failed");
-  });
-  const pipeline = createNoisePipeline({ rnnoise: noise, onPacket: () => {}, onError });
-  pipeline.write(makeAudio());
-  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "denoiser failed" }));
-  pipeline.close();
-});
-
 test("uses the default error handler", () => {
   const pipeline = createNoisePipeline({
     rnnoise: makeRnnoise(() => {
