@@ -74,11 +74,11 @@ test("applies standard settings without opening services when no channel files a
   const paths = [];
   await expect(
     createRadioRuntime({
-      loadConfig: async (path) => {
-        paths.push(path);
+      loadConfig: async (...args) => {
+        paths.push(args);
         throw new Error("missing config");
       },
     }),
   ).rejects.toThrow("missing config");
-  expect(paths).toEqual(getRuntimePaths({}).configPaths);
+  expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
 });

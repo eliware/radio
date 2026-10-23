@@ -26,7 +26,7 @@ export async function createRadioRuntime({
   onError,
   log = logger,
 }) {
-  const configs = await Promise.all(configPaths.map(loadConfig));
+  const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
   rememberSecrets(configs);
   const reportError =
     onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
