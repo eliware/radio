@@ -1,14 +1,12 @@
-import { Resampler } from "@eliware/resampler";
-import { createEncoder, encodePcmFrame, SAMPLE_RATE } from "./codec.mjs";
+import { createEncoder, encodePcmFrame } from "./codec.mjs";
+import { createAudioResampler } from "./resampler.mjs";
 
-const AIRBAND_RATE = 16000;
 const OPUS_FRAME_BYTES = 960 * 2;
 
 export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError = () => {} }) {
   const state = rnnoise.createDenoiseState();
   const encoder = createEncoder();
   const noiseFrameBytes = rnnoise.frameSize * 2;
-  let resampler;
   let resampled = Buffer.alloc(0);
   let encodedPcm = Buffer.alloc(0);
   let closed = false;
@@ -45,37 +43,22 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
     onPacket(encodePcmFrame(encoder, frame));
   }
 
-  function makeResampler() {
-    const stream = new Resampler({ inRate: AIRBAND_RATE, outRate: SAMPLE_RATE });
-    stream.on("data", consume);
-    stream.on("error", onError);
-    return stream;
-  }
-
-  resampler = makeResampler();
+  const resampler = createAudioResampler({ onPcm: consume, onError });
   return {
     write: (floatPcm) => {
       if (closed) throw new Error("Audio pipeline is closed");
-      if (floatPcm.length % 4) throw new Error("Airband audio must contain float32 samples");
-      const pcm = Buffer.alloc(floatPcm.length / 2);
-      for (let i = 0; i < floatPcm.length / 4; i += 1) {
-        const value = floatPcm.readFloatLE(i * 4);
-        const clipped = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
-        pcm.writeInt16LE(Math.round(clipped * 32767), i * 2);
-      }
-      resampler.write(pcm);
+      resampler.write(floatPcm);
     },
     finishTransmission: () => {
       if (closed) return;
-      resampler.destroy();
       resampled = Buffer.alloc(0);
       encodedPcm = Buffer.alloc(0);
-      resampler = makeResampler();
+      resampler.reset();
     },
     close: () => {
       if (closed) return;
       closed = true;
-      resampler.destroy();
+      resampler.close();
       state.destroy();
       encoder.delete();
     },

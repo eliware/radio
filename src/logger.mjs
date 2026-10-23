@@ -1,4 +1,12 @@
 import { createLogger, defaultPolicy, redactText, safeSerialize } from "@eliware/common";
+import {
+  errorDetails,
+  knownSecrets,
+  rememberSecrets,
+  redactErrorText,
+} from "./logging/error-details.mjs";
+
+export { errorDetails, rememberSecrets };
 
 const privateKeys = [
   ...defaultPolicy.keys,
@@ -12,7 +20,7 @@ const privateKeys = [
 
 export function createRadioLogger({
   level = String(process.env.LOG_LEVEL ?? "info").toLowerCase(),
-  secrets = [],
+  secrets = knownSecrets,
   createLoggerImpl = createLogger,
 } = {}) {
   const base = createLoggerImpl({
@@ -26,7 +34,7 @@ export function createRadioLogger({
     methods.map((method) => [
       method,
       (message, metadata = {}) =>
-        base[method](redactText(message, { secrets }), safeMetadata(metadata, secrets)),
+        base[method](redactErrorText(message, secrets), safeMetadata(metadata, secrets)),
     ]),
   );
 }
@@ -47,22 +55,4 @@ function redactStrings(value, secrets) {
   return value;
 }
 
-const secrets = [];
-export function rememberSecrets(configs) {
-  secrets.push(
-    ...configs
-      .flatMap((config) => [config.PASSWORD, config.PRIVATE_KEY, config.TOKEN])
-      .filter(Boolean),
-  );
-}
-
-export function errorDetails(error) {
-  const value = error instanceof Error ? error : new Error(String(error));
-  return {
-    name: value.name,
-    message: redactText(value.message, { secrets }),
-    ...(value.stack && { stack: redactText(value.stack, { secrets }) }),
-  };
-}
-
-export const logger = createRadioLogger({ secrets });
+export const logger = createRadioLogger({ secrets: knownSecrets });
