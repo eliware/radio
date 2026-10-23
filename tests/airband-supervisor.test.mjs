@@ -70,6 +70,68 @@ test("retries USB detection errors with backoff", async () => {
   await supervisor.close();
 });
 
+test("waits for missing devices and stops polling on close", async () => {
+  let releaseWait;
+  const waits = [];
+  const supervisor = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "851" }],
+    configPath: "/tmp/airband.conf",
+    wait: (ms) => {
+      waits.push(ms);
+      return new Promise((resolve) => (releaseWait = resolve));
+    },
+    onError: () => {},
+    log: quietLog,
+    present: async () => false,
+    spawnProcess: () => new Child(),
+  });
+  for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
+  expect(waits).toEqual([2000]);
+  expect(supervisor.status().state).toBe("waiting-for-sdrs");
+  await supervisor.close();
+});
+
+test("does not spawn when shutdown follows device detection", async () => {
+  let supervisor;
+  let closing;
+  const spawnProcess = jest.fn();
+  supervisor = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "851" }],
+    configPath: "/tmp/airband.conf",
+    wait: async () => {},
+    onError: () => {},
+    log: quietLog,
+    spawnProcess,
+    waitForDevices: async () => {
+      queueMicrotask(() => {
+        closing = supervisor.close();
+      });
+      return true;
+    },
+  });
+  for (let attempt = 0; attempt < 20 && !closing; attempt += 1) await Promise.resolve();
+  await closing;
+  expect(spawnProcess).not.toHaveBeenCalled();
+  expect(supervisor.status().state).toBe("stopped");
+});
+
+test("uses built-in defaults while waiting for an unknown SDR", async () => {
+  const supervisor = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "serial-that-is-not-connected" }],
+    configPath: "/tmp/unused.conf",
+    wait: async () => {},
+    onError: () => {},
+  });
+  for (
+    let attempt = 0;
+    attempt < 20 && supervisor.status().state !== "waiting-for-sdrs";
+    attempt += 1
+  )
+    await Promise.resolve();
+  await supervisor.close();
+  expect(supervisor.status().state).toBe("stopped");
+});
+
 test("backs off after process exits and handles spawn failures", async () => {
   let releaseWait;
   let isPresent = true;
@@ -121,39 +183,7 @@ test("backs off after process exits and handles spawn failures", async () => {
   await retry.close();
 });
 
-test("evaluates built-in process defaults without starting hardware", async () => {
-  const supervisor = createAirbandSupervisor({
-    configs: [{ SDR_SERIAL: "serial-that-is-not-connected" }],
-    configPath: "/tmp/unused.conf",
-    wait: () => new Promise(() => {}),
-    onError: () => {},
-  });
-  for (
-    let attempt = 0;
-    attempt < 20 && supervisor.status().state !== "waiting-for-sdrs";
-    attempt += 1
-  )
-    await Promise.resolve();
-  await supervisor.close();
-  expect(supervisor.status().state).toBe("stopped");
-});
-
-test("waits for missing hardware and reports child process errors", async () => {
-  const delays = [];
-  const waiting = createAirbandSupervisor({
-    configs: [{ SDR_SERIAL: "851" }],
-    configPath: "/tmp/unused.conf",
-    wait: async (ms) => delays.push(ms),
-    onError: () => {},
-    log: quietLog,
-    present: async () => false,
-    spawnProcess: () => new Child(),
-  });
-  for (let attempt = 0; attempt < 20 && !delays.length; attempt += 1) await Promise.resolve();
-  expect(waiting.status().state).toBe("waiting-for-sdrs");
-  expect(delays).toEqual([2000]);
-  await waiting.close();
-
+test("reports child process errors and waits for restart", async () => {
   let releaseWait;
   let child;
   const errors = [];

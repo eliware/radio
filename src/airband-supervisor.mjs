@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { logger as defaultLogger } from "./logger.mjs";
 import { hasUsbSerial } from "./usb-device.mjs";
+import { waitForAirbandDevices } from "./airband/device-monitor.mjs";
 
 export function createAirbandSupervisor({
   configs,
@@ -10,6 +11,7 @@ export function createAirbandSupervisor({
   log = defaultLogger,
   present = hasUsbSerial,
   spawnProcess = spawn,
+  waitForDevices = waitForAirbandDevices,
 }) {
   let stopped = false;
   let child;
@@ -25,14 +27,17 @@ export function createAirbandSupervisor({
     let delay = 1000;
     while (!stopped) {
       try {
-        const detected = await Promise.all(configs.map(({ SDR_SERIAL }) => present(SDR_SERIAL)));
+        const ready = await waitForDevices(configs, {
+          present,
+          wait: pause,
+          shouldStop: () => stopped,
+          onMissing: () => {
+            delay = 1000;
+            state = "waiting-for-sdrs";
+          },
+        });
+        if (!ready) break;
         if (stopped) break;
-        if (!detected.every(Boolean)) {
-          delay = 1000;
-          state = "waiting-for-sdrs";
-          await pause(2000);
-          continue;
-        }
         error = undefined;
         state = "starting";
         log.info("Starting RTLSDR-Airband", {

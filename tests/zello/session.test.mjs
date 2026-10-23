@@ -9,7 +9,6 @@ class FakeSocket extends EventEmitter {
   commands = [];
   binaries = [];
   rejectLogon = false;
-  streamId = 23;
 
   constructor() {
     super();
@@ -31,7 +30,7 @@ class FakeSocket extends EventEmitter {
       response.success = false;
       response.error = "rejected";
     }
-    if (command.command === "start_stream") response.stream_id = this.streamId;
+    if (command.command === "start_stream") response.stream_id = 23;
     queueMicrotask(() => this.emit("message", Buffer.from(JSON.stringify(response))));
   }
 
@@ -44,7 +43,7 @@ class FakeSocket extends EventEmitter {
   }
 }
 
-test("logs in with a minted production token and manages audio stream lifecycle", async () => {
+test("logs in with a minted production token and manages session lifecycle", async () => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
   let socket;
   class TestSocket extends FakeSocket {
@@ -69,14 +68,7 @@ test("logs in with a minted production token and manages audio stream lifecycle"
   expect(socket.url).toBe("wss://zello.io/ws");
   expect(socket.commands[0].command).toBe("logon");
   expect(socket.commands[0].auth_token.split(".")).toHaveLength(3);
-  const stream = await session.startStream();
-  const header = Buffer.from(
-    socket.commands.find((command) => command.command === "start_stream").codec_header,
-    "base64",
-  );
-  expect(header.readUInt16LE(0)).toBe(48000);
-  await session.stopStream(stream);
-  expect(socket.commands.at(-1).command).toBe("stop_stream");
+  await expect(session.startStream()).resolves.toBe(23);
   const closed = session.waitForClose();
   session.close();
   await closed;
@@ -211,39 +203,4 @@ test("rejects a websocket close before open", async () => {
     ClosingSocket,
   );
   await expect(session.connect()).rejects.toThrow("closed before connecting");
-});
-
-test("requires a valid stream id and accepts opaque ids", async () => {
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
-  const config = {
-    CHANNEL: "PD",
-    USERNAME: "radio",
-    PASSWORD: "pw",
-    ISSUER: "issuer",
-    PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
-  };
-  let socket;
-  class OpaqueSocket extends FakeSocket {
-    constructor() {
-      super();
-      this.streamId = "stream-23";
-      socket = this;
-    }
-  }
-  const session = createZelloSession(config, OpaqueSocket);
-  await session.connect();
-  await expect(session.startStream()).resolves.toBe("stream-23");
-  session.close();
-
-  class InvalidSocket extends FakeSocket {
-    constructor() {
-      super();
-      this.streamId = null;
-    }
-  }
-  const invalid = createZelloSession(config, InvalidSocket);
-  await invalid.connect();
-  await expect(invalid.startStream()).rejects.toThrow("invalid stream_id");
-  invalid.close();
-  expect(socket).toBeDefined();
 });

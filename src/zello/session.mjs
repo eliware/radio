@@ -1,14 +1,15 @@
 import WebSocket from "ws";
 import { createAuthToken } from "./auth.mjs";
-import { codecHeader } from "../audio/codec.mjs";
 import { createZelloCommands } from "./commands.mjs";
 import { createZelloAudioSender } from "./audio-sender.mjs";
+import { createZelloStreams } from "./streams.mjs";
 
 export function createZelloSession(config, WebSocketImpl = WebSocket) {
   let socket;
   let online = false;
   let commands;
   let closePromise = Promise.resolve();
+  const streams = createZelloStreams(config.CHANNEL);
   const sendAudio = createZelloAudioSender({
     getSocket: () => socket,
     isOnline: () => online,
@@ -44,6 +45,7 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
     });
     const currentCommands = createZelloCommands(currentSocket, () => online);
     commands = currentCommands;
+    streams.setRequest(currentCommands.request);
     closePromise = new Promise((resolve) => currentSocket.once("close", resolve));
     currentSocket.on("close", () => {
       online = false;
@@ -74,30 +76,6 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
       throw error;
     }
   }
-  async function startStream() {
-    const response = await commands.request({
-      command: "start_stream",
-      channel: config.CHANNEL,
-      type: "audio",
-      codec: "opus",
-      codec_header: codecHeader(),
-      packet_duration: 20,
-    });
-    const streamId = response.stream_id;
-    if (
-      (typeof streamId === "string" && streamId.trim()) ||
-      (Number.isSafeInteger(streamId) && streamId > 0)
-    )
-      return streamId;
-    throw new Error("Zello start_stream returned an invalid stream_id");
-  }
-  async function stopStream(streamId) {
-    await commands.request({
-      command: "stop_stream",
-      channel: config.CHANNEL,
-      stream_id: streamId,
-    });
-  }
   function close() {
     online = false;
     commands?.close(new Error("Zello session stopped"));
@@ -114,8 +92,8 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
     close,
     healthy: () => online,
     sendAudio,
-    startStream,
-    stopStream,
+    startStream: streams.startStream,
+    stopStream: streams.stopStream,
     waitForClose,
   };
 }
