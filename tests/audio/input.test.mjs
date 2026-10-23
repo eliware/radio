@@ -69,3 +69,40 @@ test("uses the default socket error handler", async () => {
   socket.emit("error", new Error("handled by default"));
   await input.close();
 });
+
+test("rejects UDP bind errors and reports them", async () => {
+  class FailedBindSocket extends FakeSocket {
+    bind() {
+      this.emit("error", new Error("bind failed"));
+    }
+  }
+  const onError = jest.fn();
+  const input = createAudioInput({
+    port: 12001,
+    session: {},
+    rnnoise,
+    onError,
+    createSocketImpl: () => new FailedBindSocket(),
+    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
+  });
+  await expect(input.listen()).rejects.toThrow("bind failed");
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "bind failed" }));
+  await input.close();
+});
+
+test("rejects synchronous UDP bind failures", async () => {
+  class ThrowingBindSocket extends FakeSocket {
+    bind() {
+      throw new Error("invalid bind");
+    }
+  }
+  const input = createAudioInput({
+    port: 12001,
+    session: {},
+    rnnoise,
+    createSocketImpl: () => new ThrowingBindSocket(),
+    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
+  });
+  await expect(input.listen()).rejects.toThrow("invalid bind");
+  await input.close();
+});

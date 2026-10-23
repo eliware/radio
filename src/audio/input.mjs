@@ -30,8 +30,20 @@ export function createAudioInput({
   socket.on("message", transmission.receive);
   socket.on("error", onError);
   const listen = () =>
-    new Promise((resolve) => {
-      socket.bind(port, "127.0.0.1", () => resolve(socket.address().port));
+    new Promise((resolve, reject) => {
+      const failed = (error) => {
+        socket.off("error", failed);
+        reject(error);
+      };
+      socket.once("error", failed);
+      try {
+        socket.bind(port, "127.0.0.1", () => {
+          socket.off("error", failed);
+          resolve(socket.address().port);
+        });
+      } catch (error) {
+        failed(error);
+      }
     });
   const close = async () => {
     await transmission.close();

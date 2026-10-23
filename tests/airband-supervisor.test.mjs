@@ -20,7 +20,6 @@ test("reports ready only while one Airband process is running", async () => {
   const supervisor = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }, { SDR_SERIAL: "853" }],
     configPath: "/tmp/airband.conf",
-    initialReady: Promise.resolve(),
     wait: async () => {},
     onError: () => {},
     log: quietLog,
@@ -53,7 +52,6 @@ test("backs off after process exits and handles spawn failures", async () => {
   const supervisor = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
-    initialReady: Promise.resolve(),
     wait: (ms) => {
       waits.push(ms);
       return new Promise((resolve) => (releaseWait = resolve));
@@ -82,7 +80,6 @@ test("backs off after process exits and handles spawn failures", async () => {
   const retry = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
-    initialReady: Promise.resolve(),
     wait: async () => {},
     onError: (error) => errors.push(error.message),
     log: quietLog,
@@ -101,7 +98,6 @@ test("evaluates built-in process defaults without starting hardware", async () =
   const supervisor = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "serial-that-is-not-connected" }],
     configPath: "/tmp/unused.conf",
-    initialReady: Promise.resolve(),
     wait: () => new Promise(() => {}),
     onError: () => {},
   });
@@ -120,7 +116,6 @@ test("waits for missing hardware and reports child process errors", async () => 
   const waiting = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/unused.conf",
-    initialReady: Promise.resolve(),
     wait: async (ms) => delays.push(ms),
     onError: () => {},
     log: quietLog,
@@ -138,7 +133,6 @@ test("waits for missing hardware and reports child process errors", async () => 
   const failed = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
-    initialReady: Promise.resolve(),
     wait: () => new Promise((resolve) => (releaseWait = resolve)),
     onError: (error) => errors.push(error.message),
     log: quietLog,
@@ -147,8 +141,31 @@ test("waits for missing hardware and reports child process errors", async () => 
   });
   for (let attempt = 0; attempt < 20 && !failed.ready(); attempt += 1) await Promise.resolve();
   child.emit("error", new Error("process event error"));
+  expect(failed.status().state).toBe("running");
   for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
   expect(errors).toContain("process event error");
+  releaseWait();
+  await failed.close();
+});
+
+test("reports a pre-spawn child error as an error state", async () => {
+  let releaseWait;
+  const failed = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "851" }],
+    configPath: "/tmp/airband.conf",
+    wait: () => new Promise((resolve) => (releaseWait = resolve)),
+    onError: () => {},
+    log: quietLog,
+    present: async () => true,
+    spawnProcess: () => {
+      const child = new EventEmitter();
+      queueMicrotask(() => child.emit("error", new Error("spawn event failed")));
+      return child;
+    },
+  });
+  for (let attempt = 0; attempt < 20 && failed.status().state !== "error"; attempt += 1)
+    await Promise.resolve();
+  expect(failed.status()).toMatchObject({ state: "error", error: "spawn event failed" });
   releaseWait();
   await failed.close();
 });
@@ -159,7 +176,6 @@ test("stops before retrying when an error callback shuts down the supervisor", a
   failed = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
-    initialReady: Promise.resolve(),
     wait: async () => {},
     onError: () => {
       stopped = failed.close();

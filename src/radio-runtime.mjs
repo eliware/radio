@@ -57,7 +57,6 @@ export async function createRadioRuntime({
   const airband = makeAirbandSupervisor({
     configs,
     configPath: airbandPath,
-    initialReady: sessions.initialReady,
     wait,
     onError: reportError,
     log,

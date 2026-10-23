@@ -24,6 +24,8 @@ export function createAudioTransmission({
   let starting;
   let idleTimer;
   let lastPacketAt = 0;
+  let retryAt = 0;
+  let retryDelay = 1000;
   let closed = false;
 
   function flush() {
@@ -45,14 +47,22 @@ export function createAudioTransmission({
   }
 
   function begin() {
-    if (streamId || starting || !session.healthy()) return;
+    if (streamId || starting || !session.healthy() || now() < retryAt) return;
     starting = session
       .startStream()
       .then((id) => {
         streamId = id;
+        retryAt = 0;
+        retryDelay = 1000;
         flush();
       })
-      .catch(onError)
+      .catch((error) => {
+        pcm = Buffer.alloc(0);
+        processor.finishTransmission();
+        retryAt = now() + retryDelay;
+        retryDelay = Math.min(retryDelay * 2, 30000);
+        onError(error);
+      })
       .finally(() => {
         starting = undefined;
       });
@@ -84,6 +94,7 @@ export function createAudioTransmission({
     receive(packet) {
       if (closed || !session.healthy()) return;
       lastPacketAt = now();
+      if (now() < retryAt) return;
       pcm = Buffer.concat([pcm, packet]);
       begin();
       flush();

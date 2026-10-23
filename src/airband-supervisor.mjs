@@ -5,7 +5,6 @@ import { hasUsbSerial } from "./usb-device.mjs";
 export function createAirbandSupervisor({
   configs,
   configPath,
-  initialReady,
   wait,
   onError,
   log = defaultLogger,
@@ -14,7 +13,7 @@ export function createAirbandSupervisor({
 }) {
   let stopped = false;
   let child;
-  let state = "waiting-for-zello";
+  let state = "waiting-for-sdrs";
   let error;
   let resolveStop;
   const stopSignal = new Promise((resolve) => {
@@ -23,7 +22,6 @@ export function createAirbandSupervisor({
   const pause = (ms) => Promise.race([wait(ms), stopSignal]);
 
   async function run() {
-    await initialReady;
     let delay = 1000;
     while (!stopped) {
       const detected = await Promise.all(configs.map(({ SDR_SERIAL }) => present(SDR_SERIAL)));
@@ -52,7 +50,7 @@ export function createAirbandSupervisor({
         });
         child = undefined;
         if (stopped) break;
-        state = "waiting-for-sdrs";
+        state = result.cause ? "error" : "waiting-for-sdrs";
         error = result.cause?.message ?? `RTLSDR-Airband exited (${result.code ?? result.signal})`;
         onError(new Error(error));
       } catch (cause) {

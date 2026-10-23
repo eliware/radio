@@ -158,3 +158,55 @@ test("does not end a transmission before the idle interval expires", async () =>
   await new Promise((resolve) => setImmediate(resolve));
   await transmission.close();
 });
+
+test("backs off failed Zello starts and discards stale audio", async () => {
+  let now = 0;
+  let startCount = 0;
+  const onError = jest.fn();
+  const processor = {
+    write: jest.fn(),
+    finishTransmission: jest.fn(),
+    close: jest.fn(),
+  };
+  const transmission = createAudioTransmission({
+    rnnoise,
+    now: () => now,
+    onError,
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {},
+    createProcessor: () => processor,
+    session: {
+      healthy: () => true,
+      startStream: async () => {
+        startCount += 1;
+        if (startCount < 3) throw new Error(`start failed ${startCount}`);
+        return 5;
+      },
+      sendAudio: () => {},
+      stopStream: async () => {},
+    },
+  });
+
+  transmission.receive(Buffer.alloc(1280, 1));
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(startCount).toBe(1);
+  now = 999;
+  transmission.receive(Buffer.alloc(1280, 2));
+  expect(startCount).toBe(1);
+  now = 1000;
+  transmission.receive(Buffer.alloc(1280, 3));
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(startCount).toBe(2);
+  now = 2999;
+  transmission.receive(Buffer.alloc(1280, 4));
+  expect(startCount).toBe(2);
+  now = 3000;
+  transmission.receive(Buffer.alloc(1280, 5));
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(startCount).toBe(3);
+  expect(processor.write).toHaveBeenCalledTimes(1);
+  expect(processor.write.mock.calls[0][0]).toEqual(Buffer.alloc(1280, 5));
+  expect(processor.finishTransmission).toHaveBeenCalledTimes(2);
+  expect(onError).toHaveBeenCalledTimes(2);
+  await transmission.close();
+});

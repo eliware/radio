@@ -91,7 +91,7 @@ Node.js starts as the container's PID 1 process. It validates both channel files
 connections, writes an RTLSDR-Airband configuration to a temporary directory, and opens one UDP
 listener for each configured `UDP_PORT`.
 
-The app connects both Zello sessions before starting RTLSDR-Airband. It waits for both configured
+The app starts Zello reconnection and RTLSDR-Airband independently. It waits for both configured
 USB serials to appear. If a dongle is missing, it checks again every two seconds. If Airband exits,
 the retry interval increases from one to 30 seconds. Each Zello session reconnects at intervals
 that increase to five minutes. A stable Zello session resets its retry interval.

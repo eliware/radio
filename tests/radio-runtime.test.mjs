@@ -44,7 +44,6 @@ test("builds one runtime from per-channel files and combines readiness", async (
     makeSessionSupervisor: (_channels, options) => {
       capturedOptions = options;
       return {
-        initialReady: Promise.resolve(),
         ready: () => true,
         status: () => ({ PD: { state: "online" }, FD: { state: "online" } }),
         close: async () => events.push("sessions closed"),

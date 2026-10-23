@@ -5,7 +5,9 @@
   "description": "NBFM receiver audio bridge to Zello channels",
   "keywords": [
     "radio",
-    "rtl-sdr"
+    "rtl-sdr",
+    "zello",
+    "nbfm"
   ],
   "private": true,
   "bin": {
