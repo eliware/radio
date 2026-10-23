@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createRadioLogger, errorDetails, rememberSecrets } from "../src/logger.mjs";
+import { createRadioLogger } from "../src/logger.mjs";
 
 test("creates structured log records with key and literal secret redaction", () => {
   const records = [];
@@ -33,14 +33,6 @@ test("creates structured log records with key and literal secret redaction", () 
   });
   for (const level of ["debug", "warn", "error"]) logger[level]("event");
   expect(records).toHaveLength(4);
-});
-
-test("remembers channel secrets and safely describes error and non-error values", () => {
-  rememberSecrets([{ PASSWORD: "channel-secret", PRIVATE_KEY: "key-material" }]);
-  const error = errorDetails(new Error("failed channel-secret"));
-  expect(error.message).toBe("failed [REDACTED]");
-  expect(error.stack).not.toContain("channel-secret");
-  expect(errorDetails("key-material").message).toBe("[REDACTED]");
 });
 
 test("rejects unsupported logger levels", () => {

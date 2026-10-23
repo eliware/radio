@@ -1,10 +1,12 @@
 import { writeFile } from "node:fs/promises";
-import { errorDetails, logger, rememberSecrets } from "./logger.mjs";
+import { errorDetails, rememberSecrets } from "./logging/error-details.mjs";
+import { logger } from "./logger.mjs";
 import { getRuntimePaths } from "./runtime-paths.mjs";
 import { createAirbandSupervisor } from "./airband-supervisor.mjs";
 import { createAudioInput } from "./audio/input.mjs";
 import { loadRnnoise } from "./audio/rnnoise.mjs";
-import { createAirbandConfig, loadChannelConfig } from "./channel-config.mjs";
+import { createAirbandConfig } from "./airband/config.mjs";
+import { loadChannelConfig } from "./channel-config.mjs";
 import { createSessionSupervisor } from "./session-supervisor.mjs";
 import { createZelloSession } from "./zello/session.mjs";
 

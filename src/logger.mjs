@@ -1,12 +1,5 @@
 import { createLogger, defaultPolicy, redactText, safeSerialize } from "@eliware/common";
-import {
-  errorDetails,
-  knownSecrets,
-  rememberSecrets,
-  redactErrorText,
-} from "./logging/error-details.mjs";
-
-export { errorDetails, rememberSecrets };
+import { knownSecrets, redactErrorText } from "./logging/error-details.mjs";
 
 const privateKeys = [
   ...defaultPolicy.keys,
