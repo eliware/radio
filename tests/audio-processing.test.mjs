@@ -1,10 +1,12 @@
 import { expect, test } from "@jest/globals";
 import { createAudioProcessorArgs } from "../src/audio-processing.mjs";
 
-test("denoises and levels each channel before publishing to its Icecast mount", () => {
+test("isolates speech, levels transmissions, and gates quiet noise before publishing", () => {
   const args = createAudioProcessorArgs("police", 12000, "private_password_012345");
   expect(args).toContain("udp://127.0.0.1:12000?fifo_size=1000000&overrun_nonfatal=1");
-  expect(args).toContain("afftdn=nr=8:nf=-50:tn=1,dynaudnorm=f=150:g=7:p=0.9:m=10");
+  expect(args).toContain(
+    "aresample=48000,arnndn=m=/usr/share/ffmpeg/arnndn/std.rnnn:mix=1,aresample=16000,dynaudnorm=f=150:g=7:p=0.9:m=10,agate=threshold=0.012:ratio=6:range=0.003:attack=10:release=300",
+  );
   expect(args).toContain("audio/mpeg");
   expect(args.at(-1)).toBe("icecast://source:private_password_012345@icecast:8000/police.mp3");
 });
