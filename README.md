@@ -78,6 +78,7 @@ Use `docker compose up -d --build` to build and start all three containers. Use
 - `GET /` serves the status page.
 - `GET /health` reports process health.
 - `GET /ready` reports application readiness.
+- `GET /channels` reports Police and Fire receiver states separately.
 - `GET /streams/police.mp3` proxies the Police audio stream.
 - `GET /streams/fire.mp3` proxies the Fire audio stream.
 
@@ -94,7 +95,7 @@ Run `npm run build`, then run `npm start`. Open `http://localhost:3000` in a bro
 
 ## Build
 
-Run `npm run build` to bundle the readiness status text.
+Run `npm run build` to bundle readiness, receiver state, and audio status updates.
 
 ## Deployment
 

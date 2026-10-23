@@ -21,7 +21,7 @@ RUN apk add --no-cache ca-certificates libstdc++ lame-libs libshout libconfig++ 
     fftw-single-libs libusb libpulse soapy-sdr
 COPY --from=build /usr/lib/librtlsdr.so* /usr/lib/
 COPY --from=build /build/airband-build/src/rtl_airband /usr/local/bin/rtl_airband
-COPY src/service-supervisor.mjs src/sdr-config.mjs /app/src/
+COPY src/receiver-supervisor.mjs src/sdr-config.mjs /app/src/
 COPY bin/sdr-supervisor.mjs /app/bin/
 WORKDIR /app
 EXPOSE 9101

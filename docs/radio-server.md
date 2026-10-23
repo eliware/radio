@@ -2,15 +2,22 @@
 
 Compose starts three private containers. `radio` serves the player on TCP port `3000` by default.
 This host's local `.env` sets `PORT=3001` because Radar uses port `3000`.
-`sdr` runs RTLSDR-Airband with two dongles, NFM demodulation, and configured CTCSS squelch.
+
+`sdr` supervises Police and Fire as separate RTLSDR-Airband processes. Each starts only when its
+assigned USB serial exists in system device data. Removing one dongle stops only its channel
+process. When that serial returns, its process starts again without restarting the other.
+Both processes use NFM demodulation and configured CTCSS squelch.
+
 `icecast` receives each audio source and serves its mountpoints to the player.
 Each dongle samples at 1.024 Msps to lower USB traffic while covering its single channel.
 
-The SDR and Icecast containers run Node as PID 1. Their supervisors expose `/health` and
-`/ready` on internal ports `9101` and `9102`. `/health` confirms that the supervisor responds.
-`/ready` also checks its child process and required downstream application. The SDR container
-health check uses `/health`. Its `/ready` route stays unavailable until receiver configuration
-and hardware are available.
+The SDR and Icecast containers run Node as PID 1. Their supervisors expose `/health` and `/ready`
+on internal ports `9101` and `9102`. `/health` confirms that a supervisor responds.
+`/ready` also checks its child process and required downstream application.
+
+The SDR `/status` route reports `running`, `disconnected`, `starting`, or `error` for each
+channel. SDR `/ready` stays unavailable until both receivers run. The web player `/channels`
+route forwards those states to the page. Per-channel messages also report stream playback errors.
 
 The player forwards both Icecast streams under its own address.
 
@@ -22,8 +29,9 @@ tones are in local `.env`. Keep that file private and untracked.
 
 Run `docker compose up -d --build` to start the containers. On this host, check the player at
 `http://localhost:3001`, then use its Police and Fire audio controls. Check
-`http://localhost:3001/health` and `/ready`. The SDR stays unready until both serial numbers
-are configured and its receiver process is running. Use `docker compose logs -f sdr icecast`
+`http://localhost:3001/health` and `/ready`. Check `/channels` for each receiver state. The SDR
+stays unready until both serial numbers are configured and their processes are running. Use
+`docker compose logs -f sdr icecast`
 to find startup problems. Run `docker compose down` to stop the containers.
 
 Only the player port is published on the host. Icecast and both supervisor ports stay on the

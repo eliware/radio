@@ -62,7 +62,7 @@ function mockReply() {
   return { reply, events };
 }
 
-async function createTestServer(requestStream) {
+async function createTestServer(requestStream, fetcher = fetch) {
   const app = mockServer();
   await createRadioServer({
     fastifyFactory: () => app,
@@ -70,9 +70,46 @@ async function createTestServer(requestStream) {
     icecastHost: "icecast-test",
     icecastPort: 8100,
     requestStream,
+    fetcher,
   });
   return app;
 }
+
+test("reports per-channel receiver state and unavailable status", async () => {
+  const app = await createTestServer(
+    () => {},
+    async () => ({
+      ok: true,
+      json: async () => ({ police: { state: "running" }, fire: { state: "disconnected" } }),
+    }),
+  );
+  const status = app.routes.get("/channels");
+  await expect(status({}, mockReply().reply)).resolves.toEqual({
+    police: { state: "running" },
+    fire: { state: "disconnected" },
+  });
+  const rejected = await createTestServer(
+    () => {},
+    async () => ({ ok: false }),
+  );
+  const rejectedReply = mockReply().reply;
+  await rejected.routes.get("/channels")({}, rejectedReply);
+  expect(rejectedReply.code).toHaveBeenCalledWith(503);
+  expect(rejectedReply.send).toHaveBeenCalled();
+  const unavailable = await createTestServer(
+    () => {},
+    async () => {
+      throw new Error("receiver service down");
+    },
+  );
+  const errorReply = mockReply().reply;
+  await expect(unavailable.routes.get("/channels")({}, errorReply)).resolves.toBeUndefined();
+  expect(errorReply.code).toHaveBeenCalledWith(503);
+  expect(errorReply.send).toHaveBeenCalledWith({
+    police: { state: "unavailable" },
+    fire: { state: "unavailable" },
+  });
+});
 
 test("proxies selected audio streams and releases them on client close", async () => {
   const upstream = new EventEmitter();

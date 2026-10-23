@@ -27,7 +27,8 @@ function device({ serial, frequency, tone, mount, password }) {
     }); }); }`;
 }
 
-export function createSdrConfig(env) {
+export function createSdrConfig(env, channel = "both") {
+  if (!["both", "police", "fire"].includes(channel)) throw new Error("Unknown receiver channel");
   const password = required(env, "ICECAST_SOURCE_PASSWORD");
   if (!/^[a-zA-Z0-9_-]{16,}$/.test(password)) {
     throw new Error(
@@ -53,5 +54,6 @@ export function createSdrConfig(env) {
     mount: "fire",
     password,
   });
-  return `fft_size = 256; devices: (${police}, ${fire});`;
+  const devices = channel === "police" ? police : channel === "fire" ? fire : `${police}, ${fire}`;
+  return `fft_size = 256; devices: (${devices});`;
 }

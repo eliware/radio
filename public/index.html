@@ -9,7 +9,23 @@
         background: #080808;
         color: #00ff66;
         font: 16px monospace;
-        margin: 2rem;
+        margin: 1rem;
+      }
+      main {
+        max-width: 40rem;
+        margin: auto;
+      }
+      section {
+        border: 1px solid #00ff66;
+        margin-block: 1rem;
+        padding: 1rem;
+      }
+      audio {
+        display: block;
+        width: 100%;
+      }
+      .channel-status {
+        min-height: 1.25em;
       }
       a {
         color: #00ff66;
@@ -22,13 +38,15 @@
       <p>Server status: <span id="server-status">Checking</span></p>
       <section aria-labelledby="police-heading">
         <h2 id="police-heading">Police</h2>
-        <audio controls preload="none" src="/streams/police.mp3">
+        <p id="police-status" class="channel-status" aria-live="polite">Checking receiver…</p>
+        <audio id="police-audio" controls preload="none" src="/streams/police.mp3">
           Audio playback is unavailable.
         </audio>
       </section>
       <section aria-labelledby="fire-heading">
         <h2 id="fire-heading">Fire</h2>
-        <audio controls preload="none" src="/streams/fire.mp3">
+        <p id="fire-status" class="channel-status" aria-live="polite">Checking receiver…</p>
+        <audio id="fire-audio" controls preload="none" src="/streams/fire.mp3">
           Audio playback is unavailable.
         </audio>
       </section>
@@ -37,6 +55,9 @@
     <script src="/client.js"></script>
     <script>
       radioLoadReadiness(fetch, document);
+      radioBindAudioStatus(document);
+      radioLoadChannelStatus(fetch, document);
+      setInterval(() => radioLoadChannelStatus(fetch, document), 3000);
     </script>
   </body>
 </html>

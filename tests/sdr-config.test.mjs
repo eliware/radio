@@ -38,3 +38,13 @@ test.each([
 ])("rejects invalid settings", (env, message) => {
   expect(() => createSdrConfig(env)).toThrow(message);
 });
+
+test("creates one-device configurations for separate supervised receivers", () => {
+  expect(createSdrConfig(settings, "police")).toContain(
+    'devices: ({ type = "rtlsdr"; serial = "853"',
+  );
+  expect(createSdrConfig(settings, "fire")).toContain(
+    'devices: ({ type = "rtlsdr"; serial = "851"',
+  );
+  expect(() => createSdrConfig(settings, "unknown")).toThrow("Unknown receiver channel");
+});

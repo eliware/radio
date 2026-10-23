@@ -8,6 +8,9 @@ directives:
       - Read the listening port from PORT and default to 3000.
       - Run the player, SDR receiver, and Icecast as three Docker services.
       - Run Node.js health and readiness supervisors as PID 1 in SDR and Icecast containers.
+      - Supervise Police and Fire receiver processes separately by assigned USB serial.
+      - Stop only the disconnected channel and launch it when its USB serial returns.
+      - Expose per-channel receiver state through the player API.
       - Apply NFM and configured CTCSS squelch before streaming each channel.
       - Keep SDR serial numbers and stream credentials in local environment configuration.
     donts:

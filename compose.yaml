@@ -5,6 +5,8 @@ services:
       PORT: ${PORT:-3000}
       ICECAST_HOST: icecast
       ICECAST_PORT: 8000
+      SDR_HOST: sdr
+      SDR_PORT: 9101
     healthcheck:
       test:
         - CMD
