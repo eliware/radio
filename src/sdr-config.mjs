@@ -17,13 +17,14 @@ function numberSetting(env, key) {
   return value;
 }
 
-function device({ serial, frequency, tone, mount }) {
+function device({ serial, frequency, tone, mount, password }) {
   return `{ type = "rtlsdr"; serial = "${serial}"; gain = 25; sample_rate = 1.024;
     centerfreq = ${frequency};
     channels: ({ freq = ${frequency}; modulation = "nfm"; ctcss = ${tone};
       notch = ${tone}; outputs: ({
-      type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = ${mount === "police" ? 12000 : 12001};
-      continuous = true;
+      type = "icecast"; server = "icecast"; port = 8000;
+      mountpoint = "${mount}.mp3"; username = "source"; password = "${password}";
+      name = "${mount === "police" ? "Police" : "Fire"}";
     }); }); }`;
 }
 
@@ -36,6 +37,7 @@ export function createSdrConfig(env, channel = "both") {
   }
   const policeSerial = required(env, "RADIO_POLICE_SDR_SERIAL");
   const fireSerial = required(env, "RADIO_FIRE_SDR_SERIAL");
+  const password = required(env, "ICECAST_SOURCE_PASSWORD");
   if (policeSerial === fireSerial) throw new Error("Police and fire need different SDR serials");
   const policeTone = numberSetting(env, "RADIO_POLICE_PL_HZ").toFixed(1);
   const fireTone = numberSetting(env, "RADIO_FIRE_PL_HZ").toFixed(1);
@@ -44,12 +46,14 @@ export function createSdrConfig(env, channel = "both") {
     frequency: numberSetting(env, "RADIO_POLICE_FREQUENCY_MHZ"),
     tone: policeTone,
     mount: "police",
+    password,
   });
   const fire = device({
     serial: fireSerial,
     frequency: numberSetting(env, "RADIO_FIRE_FREQUENCY_MHZ"),
     tone: fireTone,
     mount: "fire",
+    password,
   });
   const devices = channel === "police" ? police : channel === "fire" ? fire : `${police}, ${fire}`;
   return `fft_size = 256; devices: (${devices});`;

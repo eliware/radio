@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
-import { createAudioProcessorArgs } from "../src/audio-processing.mjs";
 import { createReceiverSupervisor } from "../src/receiver-supervisor.mjs";
 import { createSdrConfig } from "../src/sdr-config.mjs";
 
@@ -14,12 +13,6 @@ const receivers = [
 const supervisor = createReceiverSupervisor({
   receivers,
   configFor: (channel) => createSdrConfig(env, channel),
-  processorArgsFor: (channel) =>
-    createAudioProcessorArgs(
-      channel,
-      channel === "police" ? 12000 : 12001,
-      env.ICECAST_SOURCE_PASSWORD,
-    ),
   writeConfig: (path, config) => writeFile(path, config, { mode: 0o600 }),
 });
 const server = createServer((request, response) => {

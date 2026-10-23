@@ -58,14 +58,13 @@ test("starts each receiver independently and restarts it after USB reconnect", a
   expect(writeConfig).toHaveBeenCalledTimes(3);
 });
 
-test("runs the audio processor before the receiver and stops both on disconnect", async () => {
+test("starts the receiver directly and stops it on USB disconnect", async () => {
   const childProcesses = [];
   let connected = true;
   const supervisor = createReceiverSupervisor({
     receivers: [{ channel: "police", serial: "853" }],
     present: async () => connected,
     configFor: () => "radio config",
-    processorArgsFor: () => ["processor args"],
     writeConfig: async () => {},
     spawnProcess: (command, args) => {
       const child = new Child();
@@ -74,27 +73,23 @@ test("runs the audio processor before the receiver and stops both on disconnect"
     },
   });
   await supervisor.check();
-  expect(childProcesses.map(({ command }) => command)).toEqual([
-    "/usr/bin/ffmpeg",
-    "/usr/local/bin/rtl_airband",
-  ]);
+  expect(childProcesses.map(({ command }) => command)).toEqual(["/usr/local/bin/rtl_airband"]);
   expect(supervisor.ready()).toBe(true);
   connected = false;
   await supervisor.check();
-  expect(childProcesses.map(({ child }) => child.signals)).toEqual([["SIGTERM"], ["SIGTERM"]]);
+  expect(childProcesses.map(({ child }) => child.signals)).toEqual([["SIGTERM"]]);
   expect(supervisor.status().police.state).toBe("disconnected");
-  childProcesses[0].child.emit("error", new Error("late processor error"));
+  childProcesses[0].child.emit("error", new Error("late receiver error"));
   expect(supervisor.status().police.state).toBe("disconnected");
   await supervisor.close();
 });
 
-test("marks audio processor exits as errors and stops the receiver", async () => {
+test("retries when the receiver process exits", async () => {
   const children = [];
   const supervisor = createReceiverSupervisor({
     receivers: [{ channel: "fire", serial: "851" }],
     present: async () => true,
     configFor: () => "radio config",
-    processorArgsFor: () => ["processor args"],
     writeConfig: async () => {},
     spawnProcess: () => {
       const child = new Child();
@@ -104,12 +99,36 @@ test("marks audio processor exits as errors and stops the receiver", async () =>
   });
   await supervisor.check();
   children[0].emit("close", 1);
-  expect(supervisor.status().fire.state).toBe("error");
-  expect(children[1].signals).toContain("SIGTERM");
+  expect(supervisor.status().fire.state).toBe("waiting");
   await supervisor.close();
 });
 
-test("records setup failures for an unavailable audio pipeline", async () => {
+test("records receiver startup errors and retries on the next poll", async () => {
+  const children = [];
+  const supervisor = createReceiverSupervisor({
+    receivers: [{ channel: "police", serial: "853" }],
+    present: async () => true,
+    configFor: () => "radio config",
+    writeConfig: async () => {},
+    spawnProcess: () => {
+      const child = new Child();
+      children.push(child);
+      return child;
+    },
+  });
+  await supervisor.check();
+  children[0].emit("error", new Error("receiver spawn failed"));
+  expect(supervisor.status().police).toEqual({
+    state: "error",
+    serial: "853",
+    message: "receiver spawn failed",
+  });
+  await supervisor.check();
+  expect(supervisor.status().police.state).toBe("running");
+  await supervisor.close();
+});
+
+test("records setup failures when receiver configuration cannot be written", async () => {
   const supervisor = createReceiverSupervisor({
     receivers: [{ channel: "fire", serial: "851" }],
     present: async () => true,

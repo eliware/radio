@@ -10,7 +10,6 @@ export function createReceiverSupervisor({
   spawnProcess = spawn,
   present = hasUsbSerial,
   configFor,
-  processorArgsFor,
   writeConfig,
   intervalMs = 3000,
 }) {
@@ -36,10 +35,6 @@ export function createReceiverSupervisor({
     const entry = {};
     try {
       await writeConfig(`/tmp/rtl_airband-${channel}.conf`, configFor(channel));
-      if (processorArgsFor)
-        entry.audio = spawnProcess("/usr/bin/ffmpeg", processorArgsFor(channel), {
-          stdio: "inherit",
-        });
       entry.receiver = spawnProcess(
         "/usr/local/bin/rtl_airband",
         ["-F", "-e", "-c", `/tmp/rtl_airband-${channel}.conf`],
@@ -47,9 +42,9 @@ export function createReceiverSupervisor({
       );
       children.set(channel, entry);
       states[channel] = { state: "running", serial };
-      for (const [kind, child] of Object.entries(entry)) {
+      for (const child of Object.values(entry)) {
         child.once("error", (error) => fail(channel, entry, serial, error.message));
-        child.once("close", () => ended(channel, entry, serial, kind));
+        child.once("close", () => ended(channel, entry, serial));
       }
     } catch (error) {
       stop(entry);
@@ -64,11 +59,11 @@ export function createReceiverSupervisor({
     states[channel] = { state: "error", serial, message };
   }
 
-  function ended(channel, entry, serial, kind) {
+  function ended(channel, entry, serial) {
     if (children.get(channel) !== entry) return;
     children.delete(channel);
     stop(entry);
-    states[channel] = { state: kind === "receiver" ? "waiting" : "error", serial };
+    states[channel] = { state: "waiting", serial };
   }
 
   const check = () => Promise.all(receivers.map(poll));

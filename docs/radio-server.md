@@ -9,8 +9,8 @@ pipeline. When that serial returns, both processes start again without restartin
 RTLSDR-Airband applies NFM demodulation and configured CTCSS squelch, then sends decoded PCM to
 FFmpeg through a private UDP socket.
 
-FFmpeg resamples audio around the RNNoise voice denoiser. It applies no gate or volume changes.
-The model is pinned and checksum-verified in the SDR image. Processed streams publish to Icecast.
+RTLSDR-Airband encodes each receiver's unfiltered NFM audio as MP3 and sends it directly to
+Icecast. No FFmpeg processing, noise suppression, gating, or volume changes are applied.
 Moderate filter settings help preserve voice quality. The filter does not isolate voices during
 overlapping transmissions like Krisp.
 
