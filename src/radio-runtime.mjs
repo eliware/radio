@@ -80,10 +80,13 @@ export async function createRadioRuntime({
   }
   return {
     close: async () => {
-      const stopAirband = airband.close();
-      await Promise.all(inputs.map((input) => input.close()));
-      await sessions.close();
-      await stopAirband;
+      const closing = await Promise.allSettled([
+        ...inputs.map((input) => Promise.resolve().then(() => input.close())),
+        Promise.resolve().then(() => sessions.close()),
+        Promise.resolve().then(() => airband.close()),
+      ]);
+      const failure = closing.find(({ status }) => status === "rejected");
+      if (failure) throw failure.reason;
     },
     ready: () => airband.ready() && sessions.ready(),
     status: () => ({ receiver: airband.status(), channels: sessions.status() }),

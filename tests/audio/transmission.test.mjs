@@ -50,10 +50,40 @@ test("drops buffered audio if the session disconnects during stream startup", as
   transmission.receive(Buffer.alloc(1280));
   healthy = false;
   finishStart(4);
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
   await transmission.close();
   transmission.receive(Buffer.alloc(1280));
   jest.useRealTimers();
   expect(sent).toEqual([]);
+});
+
+test("stops a stream that starts during shutdown if the session recovers", async () => {
+  let healthy = true;
+  let finishStart;
+  const stopStream = jest.fn(async () => {});
+  const processor = {
+    write: () => {},
+    finishTransmission: () => {
+      if (!healthy) healthy = true;
+    },
+    close: () => {},
+  };
+  const transmission = createAudioTransmission({
+    rnnoise,
+    createProcessor: () => processor,
+    session: {
+      healthy: () => healthy,
+      startStream: () => new Promise((resolve) => (finishStart = resolve)),
+      sendAudio: () => {},
+      stopStream,
+    },
+  });
+  transmission.receive(Buffer.alloc(1280));
+  const closing = transmission.close();
+  healthy = false;
+  finishStart(12);
+  await closing;
+  expect(stopStream).toHaveBeenCalledWith(12);
 });
 
 test("reports processor write failures", async () => {

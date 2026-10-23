@@ -133,3 +133,46 @@ test("keeps initial readiness pending until startup tone playback succeeds", asy
   expect(errors).toContain("Zello channel PD: tone failed");
   await supervisor.close();
 });
+
+test("waits for asynchronous session shutdown to finish", async () => {
+  const item = channel("PD");
+  const closeSession = item.session.close;
+  let finishClose;
+  let closeFinished = false;
+  item.session.close = async () => {
+    closeSession.call(item.session);
+    await new Promise((resolve) => (finishClose = resolve));
+    closeFinished = true;
+  };
+  const supervisor = createSessionSupervisor([item], {
+    wait: async () => {},
+    onError: () => {},
+    log: quietLog,
+    playTone: async () => {},
+  });
+  await supervisor.initialReady;
+  let finished = false;
+  const closing = supervisor.close().then(() => (finished = true));
+  for (let attempt = 0; attempt < 20 && !finishClose; attempt += 1) await Promise.resolve();
+  expect(finished).toBe(false);
+  finishClose();
+  await closing;
+  expect(closeFinished).toBe(true);
+});
+
+test("reports session shutdown errors after all tasks settle", async () => {
+  const item = channel("PD");
+  const closeSession = item.session.close;
+  item.session.close = async () => {
+    closeSession.call(item.session);
+    throw new Error("session close failed");
+  };
+  const supervisor = createSessionSupervisor([item], {
+    wait: async () => {},
+    onError: () => {},
+    log: quietLog,
+    playTone: async () => {},
+  });
+  await supervisor.initialReady;
+  await expect(supervisor.close()).rejects.toThrow("session close failed");
+});

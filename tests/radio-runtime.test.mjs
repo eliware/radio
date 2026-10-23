@@ -72,7 +72,7 @@ test("builds one runtime from per-channel files and combines readiness", async (
   expect(logs.at(-1)).toMatchObject({ level: "error", metadata: { error: { message: "sample" } } });
   await runtime.close();
   jest.useRealTimers();
-  expect(events.slice(-2)).toEqual(["receiver closed", "sessions closed"]);
+  expect(events.slice(-2).sort()).toEqual(["receiver closed", "sessions closed"].sort());
 });
 
 test("applies standard settings without opening services when no channel files are configured", async () => {
@@ -140,4 +140,32 @@ test("closes listeners and constructed supervisors after a startup failure", asy
     expect(closeInput).toHaveBeenCalledTimes(2);
     expect(closeSessions).toHaveBeenCalledTimes(failure === "airband" ? 1 : 0);
   }
+});
+
+test("waits for every component to close when one shutdown rejects", async () => {
+  let inputCount = 0;
+  const closeSessions = jest.fn();
+  const closeAirband = jest.fn();
+  const closeInput = jest.fn(async () => {
+    inputCount += 1;
+    if (inputCount === 1) throw new Error("input close failed");
+  });
+  const runtime = await createRadioRuntime({
+    configPaths: ["pd", "fd"],
+    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+    loadNoise: async () => ({ frameSize: 480 }),
+    writeConfig: async () => {},
+    log: quietLog,
+    makeInput: () => ({ listen: async () => {}, close: closeInput }),
+    makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: closeSessions }),
+    makeAirbandSupervisor: () => ({
+      ready: () => true,
+      status: () => ({}),
+      close: closeAirband,
+    }),
+  });
+  await expect(runtime.close()).rejects.toThrow("input close failed");
+  expect(closeInput).toHaveBeenCalledTimes(2);
+  expect(closeSessions).toHaveBeenCalledTimes(1);
+  expect(closeAirband).toHaveBeenCalledTimes(1);
 });

@@ -53,11 +53,15 @@ export function createSessionSupervisor(
     close: async () => {
       stopped = true;
       resolveStop();
-      for (const channel of channels) {
-        channel.resolveTone();
-        channel.session.close();
-      }
+      const closing = await Promise.allSettled(
+        channels.map(async (channel) => {
+          channel.resolveTone();
+          await channel.session.close();
+        }),
+      );
       await Promise.all(tasks);
+      const failure = closing.find(({ status }) => status === "rejected");
+      if (failure) throw failure.reason;
     },
     status: () =>
       Object.fromEntries(

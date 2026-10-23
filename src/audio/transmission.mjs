@@ -30,7 +30,7 @@ export function createAudioTransmission({
 
   function flush() {
     if (!session.healthy()) {
-      streamId = undefined;
+      if (!closed) streamId = undefined;
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
       return;
@@ -78,7 +78,7 @@ export function createAudioTransmission({
     processor.finishTransmission();
     const id = streamId;
     streamId = undefined;
-    if (id) await session.stopStream(id).catch(onError);
+    if (id && session.healthy()) await session.stopStream(id).catch(onError);
   }
 
   async function close() {
