@@ -36,8 +36,9 @@ Two RTL-SDR dongles and production Zello issuer credentials are required.
 
 ## Setup
 
-Run `npm ci` to install dependencies. Copy `.env.example` to `.env.pd` and `.env.fd`, then fill in
-the matching channel account and SDR values. Set each private file to mode `600`.
+Copy `.env.example` to `.env.pd` and `.env.fd`, fill in each channel account and SDR value, then
+set both private files to mode `600`. Follow the [end-user setup guide](docs/radio-server.md) for
+field meanings, accepted values, and startup checks.
 
 ## Usage
 
@@ -69,8 +70,10 @@ are excluded from Git and the Docker build context.
 ## Configuration
 
 Each channel file contains `CHANNEL`, `USERNAME`, `PASSWORD`, `ISSUER`, `PRIVATE_KEY`, `SDR_SERIAL`,
-`FREQUENCY_MHZ`, `CTCSS_HZ`, and `TONE`. Radio signs a production JWT with `ISSUER` and
-`PRIVATE_KEY`. Do not use a Sample Development Token.
+`FREQUENCY_MHZ`, `CTCSS_HZ`, `TONE`, and `UDP_PORT`. `RNNOISE` sets the share of processed audio
+and defaults to 100. Radio signs a production JWT with `ISSUER` and `PRIVATE_KEY`. Do not use a
+Sample Development Token. See [channel settings](docs/radio-server.md#channel-settings) for every
+field and its valid values.
 
 ## Operations
 
