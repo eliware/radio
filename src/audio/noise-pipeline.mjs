@@ -1,39 +1,12 @@
 import { createAudioPacketizer } from "./packetizer.mjs";
 import { createAudioResampler } from "./resampler.mjs";
+import { createAudioDenoiser } from "./denoiser.mjs";
 
 export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError = () => {} }) {
-  const state = rnnoise.createDenoiseState();
-  const noiseFrameBytes = rnnoise.frameSize * 2;
-  let resampled = Buffer.alloc(0);
   let closed = false;
   const packetizer = createAudioPacketizer({ onPacket });
-
-  function consume(chunk) {
-    try {
-      resampled = Buffer.concat([resampled, chunk]);
-      while (resampled.length >= noiseFrameBytes) processFrame();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  function processFrame() {
-    const pcm = resampled.subarray(0, noiseFrameBytes);
-    resampled = resampled.subarray(noiseFrameBytes);
-    const original = Float32Array.from({ length: rnnoise.frameSize }, (_, i) =>
-      pcm.readInt16LE(i * 2),
-    );
-    const frame = Float32Array.from(original);
-    state.processFrame(frame);
-    const output = Buffer.alloc(noiseFrameBytes);
-    for (let i = 0; i < frame.length; i += 1) {
-      const mixed = frame[i] * rnnoiseMix + original[i] * (1 - rnnoiseMix);
-      output.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(mixed))), i * 2);
-    }
-    packetizer.write(output);
-  }
-
-  const resampler = createAudioResampler({ onPcm: consume, onError });
+  const denoiser = createAudioDenoiser({ rnnoise, rnnoiseMix, onPcm: packetizer.write, onError });
+  const resampler = createAudioResampler({ onPcm: denoiser.write, onError });
   return {
     write: (floatPcm) => {
       if (closed) throw new Error("Audio pipeline is closed");
@@ -41,7 +14,7 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
     },
     finishTransmission: () => {
       if (closed) return;
-      resampled = Buffer.alloc(0);
+      denoiser.reset();
       packetizer.reset();
       resampler.reset();
     },
@@ -49,7 +22,7 @@ export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError
       if (closed) return;
       closed = true;
       resampler.close();
-      state.destroy();
+      denoiser.close();
       packetizer.close();
     },
   };

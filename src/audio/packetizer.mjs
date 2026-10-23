@@ -1,4 +1,5 @@
-import { createEncoder, encodePcmFrame, FRAME_BYTES } from "./codec.mjs";
+import { FRAME_BYTES } from "./codec.mjs";
+import { createEncoder, encodePcmFrame } from "./encoder.mjs";
 
 export function createAudioPacketizer({ onPacket, createEncoderImpl = createEncoder }) {
   const encoder = createEncoderImpl();

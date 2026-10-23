@@ -1,4 +1,5 @@
-import { FRAME_SAMPLES, SAMPLE_RATE, createEncoder, encodeFloatFrame } from "./audio/codec.mjs";
+import { FRAME_SAMPLES, SAMPLE_RATE } from "./audio/codec.mjs";
+import { createEncoder, encodeFloatFrame } from "./audio/encoder.mjs";
 
 export function createToneFrame(frequency, frameIndex) {
   const frame = Buffer.alloc(FRAME_SAMPLES * 4);
