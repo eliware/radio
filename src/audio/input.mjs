@@ -49,10 +49,12 @@ export function createAudioInput({
     });
   const close = async () => {
     await transmission.close();
-    if (listening) {
-      listening = false;
+    try {
       socket.close();
+    } catch (error) {
+      if (listening || error.code !== "ERR_SOCKET_DGRAM_NOT_RUNNING") throw error;
     }
+    listening = false;
   };
   return { close, listen };
 }

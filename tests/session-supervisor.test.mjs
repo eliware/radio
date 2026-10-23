@@ -107,19 +107,29 @@ test("supports an empty supervisor with the shared logger defaults", async () =>
   await supervisor.close();
 });
 
-test("resolves initial readiness when startup tone playback fails", async () => {
+test("keeps initial readiness pending until startup tone playback succeeds", async () => {
   const item = channel("PD");
+  let releaseWait;
+  let toneAttempts = 0;
+  let ready = false;
   const errors = [];
   const supervisor = createSessionSupervisor([item], {
-    wait: () => new Promise(() => {}),
+    wait: () => new Promise((resolve) => (releaseWait = resolve)),
     onError: (error) => errors.push(error.message),
     log: quietLog,
     playTone: async () => {
-      throw new Error("tone failed");
+      toneAttempts += 1;
+      if (toneAttempts === 1) throw new Error("tone failed");
     },
   });
+  supervisor.initialReady.then(() => (ready = true));
+  for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
+  await Promise.resolve();
+  expect(ready).toBe(false);
+  releaseWait();
   await supervisor.initialReady;
-  expect(item.tonePlayed).toBe(false);
+  expect(toneAttempts).toBe(2);
+  expect(item.tonePlayed).toBe(true);
   expect(errors).toContain("Zello channel PD: tone failed");
   await supervisor.close();
 });

@@ -58,16 +58,26 @@ export async function createRadioRuntime({
     throw listenFailure.reason;
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
-  const sessions = makeSessionSupervisor(channels, { wait, onError: reportError, log });
-  const airband = makeAirbandSupervisor({
-    configs,
-    configPath: airbandPath,
-    wait,
-    onError: reportError,
-    log,
-    ...(present && { present }),
-    ...(spawnProcess && { spawnProcess }),
-  });
+  let sessions;
+  let airband;
+  try {
+    sessions = makeSessionSupervisor(channels, { wait, onError: reportError, log });
+    airband = makeAirbandSupervisor({
+      configs,
+      configPath: airbandPath,
+      wait,
+      onError: reportError,
+      log,
+      ...(present && { present }),
+      ...(spawnProcess && { spawnProcess }),
+    });
+  } catch (error) {
+    await Promise.allSettled([
+      ...inputs.map((input) => input.close()),
+      ...(sessions ? [sessions.close()] : []),
+    ]);
+    throw error;
+  }
   return {
     close: async () => {
       const stopAirband = airband.close();

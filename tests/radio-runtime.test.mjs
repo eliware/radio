@@ -14,6 +14,7 @@ const config = (serial, channel) => ({
   CTCSS_HZ: "77.0",
   TONE: "1000",
 });
+const quietLog = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
 test("builds one runtime from per-channel files and combines readiness", async () => {
   jest.useFakeTimers();
@@ -96,6 +97,7 @@ test("closes every UDP input when any listener fails to bind", async () => {
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
     loadNoise: async () => ({ frameSize: 480 }),
     writeConfig: async () => {},
+    log: quietLog,
     makeInput: () => {
       count += 1;
       return {
@@ -111,4 +113,31 @@ test("closes every UDP input when any listener fails to bind", async () => {
   });
   await expect(runtime).rejects.toThrow("UDP port is busy");
   expect(close).toHaveBeenCalledTimes(2);
+});
+
+test("closes listeners and constructed supervisors after a startup failure", async () => {
+  for (const failure of ["sessions", "airband"]) {
+    const closeInput = jest.fn();
+    const closeSessions = jest.fn();
+    const runtime = createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {},
+      log: quietLog,
+      makeInput: () => ({ listen: async () => {}, close: closeInput }),
+      makeSessionSupervisor: () => {
+        if (failure === "sessions") throw new Error("session setup failed");
+        return { close: closeSessions };
+      },
+      makeAirbandSupervisor: () => {
+        throw new Error("airband setup failed");
+      },
+    });
+    await expect(runtime).rejects.toThrow(
+      failure === "sessions" ? "session setup failed" : "airband setup failed",
+    );
+    expect(closeInput).toHaveBeenCalledTimes(2);
+    expect(closeSessions).toHaveBeenCalledTimes(failure === "airband" ? 1 : 0);
+  }
 });

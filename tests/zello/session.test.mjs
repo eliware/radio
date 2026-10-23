@@ -124,6 +124,62 @@ test("closes a rejected login and handles socket errors", async () => {
   expect(unused.healthy()).toBe(false);
 });
 
+test("rejects a websocket error before open so the supervisor can retry", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
+  class FailingSocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = 0;
+
+    constructor() {
+      super();
+      queueMicrotask(() => this.emit("error", new Error("opening failed")));
+    }
+
+    terminate() {
+      this.readyState = FailingSocket.CLOSED;
+      this.emit("close");
+    }
+  }
+  const session = createZelloSession(
+    {
+      CHANNEL: "PD",
+      USERNAME: "radio",
+      PASSWORD: "pw",
+      ISSUER: "issuer",
+      PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+    },
+    FailingSocket,
+  );
+  await expect(session.connect()).rejects.toThrow("opening failed");
+  expect(session.healthy()).toBe(false);
+});
+
+test("rejects a websocket close before open", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
+  class ClosingSocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = 0;
+
+    constructor() {
+      super();
+      queueMicrotask(() => this.emit("close"));
+    }
+  }
+  const session = createZelloSession(
+    {
+      CHANNEL: "PD",
+      USERNAME: "radio",
+      PASSWORD: "pw",
+      ISSUER: "issuer",
+      PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+    },
+    ClosingSocket,
+  );
+  await expect(session.connect()).rejects.toThrow("closed before connecting");
+});
+
 test("requires a valid stream id and accepts opaque ids", async () => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
   const config = {

@@ -141,7 +141,9 @@ test("waits for missing hardware and reports child process errors", async () => 
   });
   for (let attempt = 0; attempt < 20 && !failed.ready(); attempt += 1) await Promise.resolve();
   child.emit("error", new Error("process event error"));
-  expect(failed.status().state).toBe("running");
+  expect(failed.status().state).toBe("error");
+  expect(releaseWait).toBeUndefined();
+  child.emit("close", null, "SIGTERM");
   for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
   expect(errors).toContain("process event error");
   releaseWait();
@@ -167,6 +169,10 @@ test("reports a pre-spawn child error as an error state", async () => {
   for (let attempt = 0; attempt < 20 && failed.status().state !== "error"; attempt += 1)
     await Promise.resolve();
   expect(failed.status()).toMatchObject({ state: "error", error: "spawn event failed" });
+  expect(child.listenerCount("close")).toBe(1);
+  expect(releaseWait).toBeUndefined();
+  child.emit("close", null, null);
+  for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
   expect(child.listenerCount("close")).toBe(0);
   releaseWait();
   await failed.close();

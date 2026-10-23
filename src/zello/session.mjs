@@ -20,6 +20,28 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
     online = false;
     socket = new WebSocketImpl("wss://zello.io/ws");
     const currentSocket = socket;
+    const opening = new Promise((resolve, reject) => {
+      const cleanup = () => {
+        currentSocket.off("open", opened);
+        currentSocket.off("error", failed);
+        currentSocket.off("close", closed);
+      };
+      const opened = () => {
+        cleanup();
+        resolve();
+      };
+      const failed = (error) => {
+        cleanup();
+        reject(error);
+      };
+      const closed = () => {
+        cleanup();
+        reject(new Error("Zello closed before connecting"));
+      };
+      currentSocket.once("open", opened);
+      currentSocket.once("error", failed);
+      currentSocket.once("close", closed);
+    });
     const currentCommands = createZelloCommands(currentSocket, () => online);
     commands = currentCommands;
     closePromise = new Promise((resolve) => currentSocket.once("close", resolve));
@@ -32,11 +54,7 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
       currentCommands.close(error);
       currentSocket.terminate?.();
     });
-    await new Promise((resolve, reject) => {
-      currentSocket.once("open", resolve);
-      currentSocket.once("error", reject);
-      currentSocket.once("close", () => reject(new Error("Zello closed before connecting")));
-    });
+    await opening;
     try {
       const authToken = createAuthToken({ issuer: config.ISSUER, privateKey: config.PRIVATE_KEY });
       await commands.request(

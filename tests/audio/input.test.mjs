@@ -17,7 +17,11 @@ class FakeSocket extends EventEmitter {
     return { port: this.port };
   }
   close() {
-    if (!this.bound) throw new Error("ERR_SOCKET_DGRAM_NOT_RUNNING");
+    if (!this.bound) {
+      const error = new Error("ERR_SOCKET_DGRAM_NOT_RUNNING");
+      error.code = "ERR_SOCKET_DGRAM_NOT_RUNNING";
+      throw error;
+    }
     this.closed = true;
   }
 }
@@ -107,4 +111,23 @@ test("rejects synchronous UDP bind failures", async () => {
   });
   await expect(input.listen()).rejects.toThrow("invalid bind");
   await input.close();
+});
+
+test("propagates unexpected UDP close errors", async () => {
+  class FailedCloseSocket extends FakeSocket {
+    close() {
+      const error = new Error("close failed");
+      error.code = "EIO";
+      throw error;
+    }
+  }
+  const input = createAudioInput({
+    port: 12001,
+    session: {},
+    rnnoise,
+    createSocketImpl: () => new FailedCloseSocket(),
+    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
+  });
+  await input.listen();
+  await expect(input.close()).rejects.toThrow("close failed");
 });
