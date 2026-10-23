@@ -1,5 +1,5 @@
 export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = () => {} }) {
-  const state = rnnoise.createDenoiseState();
+  let state = rnnoise.createDenoiseState();
   const frameBytes = rnnoise.frameSize * 2;
   let buffered = Buffer.alloc(0);
   let closed = false;
@@ -27,6 +27,21 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
         buffered = Buffer.concat([buffered, chunk]);
         while (buffered.length >= frameBytes) processFrame();
       } catch (error) {
+        buffered = Buffer.alloc(0);
+        let resetError;
+        try {
+          state.destroy();
+        } catch (cause) {
+          resetError = cause;
+        }
+        try {
+          state = rnnoise.createDenoiseState();
+        } catch (cause) {
+          resetError ??= cause;
+        }
+        if (resetError) {
+          onError(resetError);
+        }
         onError(error);
       }
     },

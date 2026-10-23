@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { chmod, writeFile } from "node:fs/promises";
 import { errorDetails, rememberSecrets } from "./logging/error-details.mjs";
 import { logger } from "./logger.mjs";
 import { getRuntimePaths } from "./runtime-paths.mjs";
@@ -18,6 +18,7 @@ export async function createRadioRuntime({
   airbandPath = defaults.airbandPath,
   loadConfig = loadChannelConfig,
   writeConfig = writeFile,
+  chmodConfig = chmod,
   makeSession = createZelloSession,
   makeInput = createAudioInput,
   loadNoise = loadRnnoise,
@@ -35,6 +36,7 @@ export async function createRadioRuntime({
   const reportError =
     onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
   await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
+  await chmodConfig(airbandPath, 0o600);
   const channels = configs.map((config) => ({
     config,
     name: config.CHANNEL,

@@ -28,6 +28,7 @@ export function createAirbandSupervisor({
         const detected = await Promise.all(configs.map(({ SDR_SERIAL }) => present(SDR_SERIAL)));
         if (stopped) break;
         if (!detected.every(Boolean)) {
+          delay = 1000;
           state = "waiting-for-sdrs";
           await pause(2000);
           continue;
@@ -41,23 +42,28 @@ export function createAirbandSupervisor({
           stdio: "inherit",
         });
         const result = await new Promise((resolve) => {
-          let processError;
+          const process = child;
+          const finish = (result) => {
+            process.off("spawn", onSpawn);
+            process.off("error", onProcessError);
+            process.off("close", onClose);
+            resolve(result);
+          };
           const onSpawn = () => {
             state = "running";
             log.info("RTLSDR-Airband started");
           };
-          const onError = (cause) => {
-            processError = cause;
+          const onProcessError = (cause) => {
             state = "error";
             error = cause.message;
+            finish({ cause });
+            process.kill?.("SIGTERM");
           };
           const onClose = (code, signal) => {
-            child.off("spawn", onSpawn);
-            child.off("error", onError);
-            resolve(processError ? { cause: processError } : { code, signal });
+            finish({ code, signal });
           };
           child.once("spawn", onSpawn);
-          child.once("error", onError);
+          child.once("error", onProcessError);
           child.once("close", onClose);
         });
         child = undefined;
@@ -71,8 +77,9 @@ export function createAirbandSupervisor({
         error = cause.message;
         onError(cause);
       }
-      if (!stopped) await pause(delay);
+      const retryDelay = delay;
       delay = Math.min(delay * 2, 30000);
+      if (!stopped) await pause(retryDelay);
     }
   }
 

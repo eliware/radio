@@ -34,6 +34,7 @@ test("builds one runtime from per-channel files and combines readiness", async (
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
     loadNoise: async () => loadedNoise,
     writeConfig: async (_path, text) => events.push(text),
+    chmodConfig: async (_path, mode) => events.push(`mode:${mode}`),
     log,
     makeSession: () => ({ healthy: () => true, close: () => {} }),
     makeInput: (options) => {
@@ -61,6 +62,7 @@ test("builds one runtime from per-channel files and combines readiness", async (
     },
   });
   expect(runtime.ready()).toBe(false);
+  expect(events).toContain("mode:384");
   receiverReady = true;
   expect(runtime.ready()).toBe(true);
   expect(events[0]).toContain("udp_stream");
@@ -97,6 +99,7 @@ test("closes every UDP input when any listener fails to bind", async () => {
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
     loadNoise: async () => ({ frameSize: 480 }),
     writeConfig: async () => {},
+    chmodConfig: async () => {},
     log: quietLog,
     makeInput: () => {
       count += 1;
@@ -124,6 +127,7 @@ test("closes listeners and constructed supervisors after a startup failure", asy
       loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
       loadNoise: async () => ({ frameSize: 480 }),
       writeConfig: async () => {},
+      chmodConfig: async () => {},
       log: quietLog,
       makeInput: () => ({ listen: async () => {}, close: closeInput }),
       makeSessionSupervisor: () => {
@@ -155,6 +159,7 @@ test("waits for every component to close when one shutdown rejects", async () =>
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
     loadNoise: async () => ({ frameSize: 480 }),
     writeConfig: async () => {},
+    chmodConfig: async () => {},
     log: quietLog,
     makeInput: () => ({ listen: async () => {}, close: closeInput }),
     makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: closeSessions }),

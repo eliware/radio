@@ -36,7 +36,9 @@ test("creates structured log records with key and literal secret redaction", () 
 });
 
 test("rejects unsupported logger levels", () => {
-  expect(() => createRadioLogger({ level: "unknown" })).toThrow();
+  expect(() => createRadioLogger({ level: "unknown" })).toThrow(
+    "Invalid LOG_LEVEL: unknown. Use debug, info, warn, or error.",
+  );
 });
 
 test("uses the configured default logger level for ordinary log calls", () => {

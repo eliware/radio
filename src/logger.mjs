@@ -11,6 +11,14 @@ const privateKeys = [
   "auth_token",
   "api_key",
 ];
+const supportedLevels = new Set(["debug", "info", "warn", "error"]);
+
+function validateLevel(level) {
+  const normalized = String(level).toLowerCase();
+  if (!supportedLevels.has(normalized))
+    throw new Error(`Invalid LOG_LEVEL: ${normalized}. Use debug, info, warn, or error.`);
+  return normalized;
+}
 
 export function createRadioLogger({
   level = String(process.env.LOG_LEVEL ?? "info").toLowerCase(),
@@ -18,7 +26,7 @@ export function createRadioLogger({
   createLoggerImpl = createLogger,
 } = {}) {
   const base = createLoggerImpl({
-    level: String(level).toLowerCase(),
+    level: validateLevel(level),
     format: "json",
     timestamp: true,
     keys: privateKeys,

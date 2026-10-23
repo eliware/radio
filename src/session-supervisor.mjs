@@ -51,8 +51,9 @@ export function createSessionSupervisor(
         channel.status = "offline";
         onError(new Error(`Zello channel ${channel.name}: ${error.message}`, { cause: error }));
       }
-      if (!stopped) await pause(delay);
+      const retryDelay = delay;
       delay = Math.min(delay * 2, 300000);
+      if (!stopped) await pause(retryDelay);
     }
   }
 

@@ -29,34 +29,116 @@ test("buffers complete frames and mixes denoised PCM with original samples", () 
   denoiser.close();
 });
 
-test("reports processing errors, resets partial frames, and closes repeatedly", () => {
-  const onError = jest.fn();
+test("drops buffered audio and rebuilds RNNoise after processing errors", () => {
+  const errors = [];
   const state = {
     processFrame: () => {
       throw new Error("denoise failed");
     },
-    destroy: jest.fn(),
+    destroy: jest.fn(() => {
+      throw new Error("destroy failed");
+    }),
   };
-  const rnnoise = { frameSize: 2, createDenoiseState: () => state };
-  const denoiser = createAudioDenoiser({ rnnoise, onPcm: () => {}, onError });
+  const recovered = { processFrame: () => {}, destroy: jest.fn() };
+  let stateCount = 0;
+  const rnnoise = {
+    frameSize: 2,
+    createDenoiseState: () => (stateCount++ === 0 ? state : recovered),
+  };
+  const denoiser = createAudioDenoiser({
+    rnnoise,
+    onPcm: () => {},
+    onError: (error) => errors.push(error.message),
+  });
   denoiser.write(Buffer.alloc(2));
   denoiser.reset();
+  denoiser.write(Buffer.alloc(8));
+  expect(errors).toEqual(["destroy failed", "denoise failed"]);
+  expect(stateCount).toBe(2);
   denoiser.write(Buffer.alloc(4));
-  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "denoise failed" }));
   denoiser.close();
   denoiser.close();
   denoiser.reset();
-  expect(state.destroy).toHaveBeenCalledTimes(1);
+  expect(recovered.destroy).toHaveBeenCalledTimes(1);
   expect(() => denoiser.write(Buffer.alloc(4))).toThrow("closed");
 });
 
-test("uses the default error handler for output callback errors", () => {
+test("drops remaining audio after output callback errors", () => {
+  const output = [];
+  let shouldFail = true;
   const denoiser = createAudioDenoiser({
     rnnoise: makeRnnoise(),
-    onPcm: () => {
-      throw new Error("output failed");
+    onPcm: (pcm) => {
+      if (shouldFail) {
+        shouldFail = false;
+        throw new Error("output failed");
+      }
+      output.push(pcm);
     },
   });
+  denoiser.write(Buffer.alloc(8));
   denoiser.write(Buffer.alloc(4));
+  expect(output).toHaveLength(1);
+  denoiser.close();
+});
+
+test("reports RNNoise state recreation failures", () => {
+  const errors = [];
+  let count = 0;
+  const rnnoise = {
+    frameSize: 2,
+    createDenoiseState: () => {
+      count += 1;
+      if (count > 1) throw new Error("reset failed");
+      return {
+        processFrame: () => {
+          throw new Error("frame failed");
+        },
+        destroy: jest.fn(),
+      };
+    },
+  };
+  const denoiser = createAudioDenoiser({
+    rnnoise,
+    onPcm: () => {},
+    onError: (error) => errors.push(error.message),
+  });
+  denoiser.write(Buffer.alloc(4));
+  expect(errors).toEqual(["reset failed", "frame failed"]);
+  denoiser.close();
+});
+
+test("drops buffered frames and rebuilds RNNoise state after a processing error", () => {
+  const errors = [];
+  const output = [];
+  const states = [];
+  const rnnoise = {
+    frameSize: 2,
+    createDenoiseState: () => {
+      const state = {
+        processFrame:
+          states.length === 0
+            ? () => {
+                throw new Error("frame failed");
+              }
+            : () => {},
+        destroy: jest.fn(),
+      };
+      states.push(state);
+      return state;
+    },
+  };
+  const denoiser = createAudioDenoiser({
+    rnnoise,
+    onPcm: (pcm) => output.push(pcm),
+    onError: (error) => errors.push(error.message),
+  });
+  denoiser.write(Buffer.alloc(8));
+  expect(output).toHaveLength(0);
+  expect(errors).toEqual(["frame failed"]);
+  expect(states[0].destroy).toHaveBeenCalledTimes(1);
+  denoiser.write(Buffer.alloc(4));
+  expect(output).toHaveLength(1);
+  expect(states).toHaveLength(2);
   denoiser.close();
 });
