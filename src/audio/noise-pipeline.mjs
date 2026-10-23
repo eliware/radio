@@ -4,7 +4,7 @@ import { createEncoder, encodePcmFrame, SAMPLE_RATE } from "./codec.mjs";
 const AIRBAND_RATE = 16000;
 const OPUS_FRAME_BYTES = 960 * 2;
 
-export function createNoisePipeline({ rnnoise, onPacket, onError = () => {} }) {
+export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError = () => {} }) {
   const state = rnnoise.createDenoiseState();
   const encoder = createEncoder();
   const noiseFrameBytes = rnnoise.frameSize * 2;
@@ -25,13 +25,15 @@ export function createNoisePipeline({ rnnoise, onPacket, onError = () => {} }) {
   function processFrame() {
     const pcm = resampled.subarray(0, noiseFrameBytes);
     resampled = resampled.subarray(noiseFrameBytes);
-    const frame = Float32Array.from({ length: rnnoise.frameSize }, (_, i) =>
+    const original = Float32Array.from({ length: rnnoise.frameSize }, (_, i) =>
       pcm.readInt16LE(i * 2),
     );
+    const frame = Float32Array.from(original);
     state.processFrame(frame);
     const output = Buffer.alloc(noiseFrameBytes);
     for (let i = 0; i < frame.length; i += 1) {
-      output.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(frame[i]))), i * 2);
+      const mixed = frame[i] * rnnoiseMix + original[i] * (1 - rnnoiseMix);
+      output.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(mixed))), i * 2);
     }
     encodedPcm = Buffer.concat([encodedPcm, output]);
     while (encodedPcm.length >= OPUS_FRAME_BYTES) sendFrame();

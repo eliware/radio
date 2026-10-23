@@ -7,6 +7,7 @@ export function createAudioInput({
   port,
   session,
   rnnoise,
+  rnnoiseMix = 1,
   createProcessor = createNoisePipeline,
   idleMs = 500,
   onError = () => {},
@@ -16,6 +17,7 @@ export function createAudioInput({
   const socket = createSocketImpl("udp4");
   const processor = createProcessor({
     rnnoise,
+    rnnoiseMix,
     onPacket: (packet) => streamId && session.sendAudio(streamId, packet),
     onError,
   });

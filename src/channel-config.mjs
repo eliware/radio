@@ -17,6 +17,7 @@ function validate(values) {
     "ISSUER",
     "PRIVATE_KEY",
     "SDR_SERIAL",
+    "UDP_PORT",
     "TONE",
   ]) {
     required(values, name);
@@ -27,6 +28,14 @@ function validate(values) {
     if (!Number.isFinite(value) || value < min || value > max)
       throw new Error(`${name} is invalid`);
   }
+  const udpPort = Number(required(values, "UDP_PORT"));
+  if (!Number.isInteger(udpPort) || udpPort < 1024 || udpPort > 65535)
+    throw new Error("UDP_PORT must be an integer from 1024 to 65535");
+  values.UDP_PORT = String(udpPort);
+  const rnnoise = Number(values.RNNOISE ?? 100);
+  if (!Number.isInteger(rnnoise) || rnnoise < 0 || rnnoise > 100)
+    throw new Error("RNNOISE must be an integer from 0 to 100");
+  values.RNNOISE = String(rnnoise);
   if (!values.PRIVATE_KEY.includes("BEGIN PRIVATE KEY")) throw new Error("PRIVATE_KEY must be PEM");
   if (values.TOKEN) throw new Error("Remove TOKEN; use issuer and private key for production auth");
   return values;
@@ -40,15 +49,17 @@ export function createAirbandConfig(channels) {
   if (channels.length !== 2 || channels[0].SDR_SERIAL === channels[1].SDR_SERIAL) {
     throw new Error("Two channels need distinct SDR serials");
   }
-  const devices = channels.map((channel, index) => {
-    const port = 12001 + index;
+  if (channels[0].UDP_PORT === channels[1].UDP_PORT) {
+    throw new Error("Two channels need distinct UDP ports");
+  }
+  const devices = channels.map((channel) => {
     const frequency = Number(channel.FREQUENCY_MHZ).toFixed(4);
     const tone = Number(channel.CTCSS_HZ).toFixed(1);
     return `{ type = "rtlsdr"; serial = "${channel.SDR_SERIAL}"; gain = 20;
       sample_rate = 1.024; centerfreq = ${frequency}; channels: ({ freq = ${frequency};
       modulation = "nfm"; ctcss = ${tone}; notch = ${tone}; bandwidth = 8000;
       tau = 300; outputs: ({
-      type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = ${port};
+      type = "udp_stream"; dest_address = "127.0.0.1"; dest_port = ${channel.UDP_PORT};
       continuous = false; }); }); }`;
   });
   return `fft_size = 256; devices: (${devices.join(",")});`;

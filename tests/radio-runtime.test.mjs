@@ -9,6 +9,7 @@ const config = (serial, channel) => ({
   ISSUER: "issuer",
   PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----",
   SDR_SERIAL: serial,
+  UDP_PORT: serial === "851" ? "15581" : "15422",
   FREQUENCY_MHZ: "155.1",
   CTCSS_HZ: "77.0",
   TONE: "1000",

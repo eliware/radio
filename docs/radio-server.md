@@ -7,8 +7,10 @@ Zello WebSocket sessions. Audio moves to Zello only while its configured CTCSS s
 
 Store Police and Fire settings in `.env.pd` and `.env.fd`. Each file names the Zello channel and
 login, signing issuer and private key, SDR serial, frequency, CTCSS value, and startup test tone.
-Keep both files private with mode `600`. Compose mounts them read-only. They are excluded from
-Git and from the Docker build context.
+Each file also sets its UDP port and RNNoise level. Use distinct UDP ports from 1024 to 65535.
+
+Keep both files private with mode `600`. Compose mounts them read-only. They are excluded from Git
+and from the Docker build context.
 
 The receiver requires two distinct SDR serials. It checks for both devices before launching the
 single Airband process. Airband applies NFM demodulation and CTCSS filtering. It uses a 20 dB tuner
@@ -16,7 +18,11 @@ amplification, an 8 kHz channel filter, and 300 µs de-emphasis.
 
 It sends 16 kHz mono float PCM to a loopback
 UDP socket. Node converts samples to signed PCM and resamples them to 48 kHz. RNNoise keeps its own
-state for each channel. Zello receives mono Opus at 48 kHz.
+state for each channel.
+
+`RNNOISE` sets the percentage of noise-reduced audio in the output, from 0 to 100. The remaining
+percentage comes from the unprocessed signal. The default is 100. Zello receives mono Opus at 48
+kHz.
 
 ## Zello connections
 

@@ -41,8 +41,14 @@ export async function createRadioRuntime({
     status: "connecting",
     tonePlayed: false,
   }));
-  const inputs = channels.map(({ session }, index) =>
-    makeInput({ port: 12001 + index, session, rnnoise, onError: reportError }),
+  const inputs = channels.map(({ session, config }) =>
+    makeInput({
+      port: Number(config.UDP_PORT),
+      session,
+      rnnoise,
+      rnnoiseMix: Number(config.RNNOISE) / 100,
+      onError: reportError,
+    }),
   );
   await Promise.all(inputs.map((input) => input.listen()));
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
