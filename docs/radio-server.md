@@ -9,9 +9,8 @@ pipeline. When that serial returns, both processes start again without restartin
 RTLSDR-Airband applies NFM demodulation and configured CTCSS squelch, then sends decoded PCM to
 FFmpeg through a private UDP socket.
 
-FFmpeg applies RNNoise voice denoising, levels transmissions dynamically, then gates quiet
-background noise. The model is pinned and checksum-verified in the SDR image. Processed streams
-publish to the existing Icecast endpoints.
+FFmpeg resamples audio around the RNNoise voice denoiser. It applies no gate or volume changes.
+The model is pinned and checksum-verified in the SDR image. Processed streams publish to Icecast.
 Moderate filter settings help preserve voice quality. The filter does not isolate voices during
 overlapping transmissions like Krisp.
 

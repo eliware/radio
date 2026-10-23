@@ -15,7 +15,7 @@ export function createAudioProcessorArgs(channel, port, password) {
     "-i",
     `udp://127.0.0.1:${port}?fifo_size=1000000&overrun_nonfatal=1`,
     "-af",
-    "aresample=48000,arnndn=m=/usr/share/ffmpeg/arnndn/std.rnnn:mix=1,aresample=16000,dynaudnorm=f=150:g=7:p=0.9:m=10,agate=threshold=0.012:ratio=6:range=0.003:attack=10:release=300",
+    "aresample=48000,arnndn=m=/usr/share/ffmpeg/arnndn/std.rnnn:mix=1,aresample=16000",
     "-c:a",
     "libmp3lame",
     "-b:a",
