@@ -36,6 +36,9 @@ export function createAudioTransmission({
       streamId = undefined;
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
+      clearTimeoutImpl(idleTimer);
+      idleTimer = undefined;
+      lastPacketAt = 0;
       return;
     }
     while (streamId && pcm.length >= INPUT_FRAME_BYTES) {

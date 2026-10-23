@@ -51,6 +51,7 @@ test("drops buffered audio if the session disconnects during stream startup", as
   healthy = false;
   finishStart(4);
   for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  expect(jest.getTimerCount()).toBe(0);
   await transmission.close();
   transmission.receive(Buffer.alloc(1280));
   jest.useRealTimers();

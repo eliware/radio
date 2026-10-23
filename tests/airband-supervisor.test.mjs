@@ -43,6 +43,33 @@ test("reports ready only while one Airband process is running", async () => {
   expect(supervisor.ready()).toBe(false);
 });
 
+test("retries USB detection errors with backoff", async () => {
+  let releaseWait;
+  let attempts = 0;
+  const errors = [];
+  const supervisor = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "851" }],
+    configPath: "/tmp/airband.conf",
+    wait: (ms) => new Promise((resolve) => ((releaseWait = resolve), errors.push(`wait:${ms}`))),
+    onError: (error) => errors.push(error.message),
+    log: quietLog,
+    present: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("USB scan failed");
+      return true;
+    },
+    spawnProcess: () => new Child(),
+  });
+  for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
+  expect(supervisor.status()).toMatchObject({ state: "error", error: "USB scan failed" });
+  expect(errors).toContain("USB scan failed");
+  releaseWait();
+  for (let attempt = 0; attempt < 20 && !supervisor.ready(); attempt += 1) await Promise.resolve();
+  expect(attempts).toBe(2);
+  expect(supervisor.ready()).toBe(true);
+  await supervisor.close();
+});
+
 test("backs off after process exits and handles spawn failures", async () => {
   let releaseWait;
   let isPresent = true;

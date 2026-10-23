@@ -47,8 +47,8 @@ in `bin/`, and tests in `tests/`.
 
 ## Testing
 
-Run `npm test` for repository validation. Run `npm run format` to apply formatting and
-`npm run format:check` to check it.
+Run `npm test` for repository validation. Run `npm run lint` and `npm run audit` for focused checks.
+Run `npm run format` to apply formatting and `npm run format:check` to check it.
 
 ## Troubleshooting
 

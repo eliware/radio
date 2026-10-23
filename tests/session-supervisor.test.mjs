@@ -49,6 +49,24 @@ test("keeps each Zello websocket connected between transmissions", async () => {
   expect(supervisor.status().PD.state).toBe("disconnected");
 });
 
+test("does not report ready before all startup tones finish", async () => {
+  const item = channel("PD");
+  let finishTone;
+  const supervisor = createSessionSupervisor([item], {
+    wait: async () => {},
+    onError: () => {},
+    log: quietLog,
+    playTone: () => new Promise((resolve) => (finishTone = resolve)),
+  });
+  for (let attempt = 0; attempt < 20 && !finishTone; attempt += 1) await Promise.resolve();
+  expect(item.session.healthy()).toBe(true);
+  expect(supervisor.ready()).toBe(false);
+  finishTone();
+  await supervisor.initialReady;
+  expect(supervisor.ready()).toBe(true);
+  await supervisor.close();
+});
+
 test("retains its initial tone state across a reconnect and resets long-lived backoff", async () => {
   jest.useFakeTimers();
   const item = channel("PD");

@@ -24,14 +24,14 @@ export function createAirbandSupervisor({
   async function run() {
     let delay = 1000;
     while (!stopped) {
-      const detected = await Promise.all(configs.map(({ SDR_SERIAL }) => present(SDR_SERIAL)));
-      if (stopped) break;
-      if (!detected.every(Boolean)) {
-        state = "waiting-for-sdrs";
-        await pause(2000);
-        continue;
-      }
       try {
+        const detected = await Promise.all(configs.map(({ SDR_SERIAL }) => present(SDR_SERIAL)));
+        if (stopped) break;
+        if (!detected.every(Boolean)) {
+          state = "waiting-for-sdrs";
+          await pause(2000);
+          continue;
+        }
         error = undefined;
         state = "starting";
         log.info("Starting RTLSDR-Airband", {

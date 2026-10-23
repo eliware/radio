@@ -20,6 +20,13 @@ export function createSessionSupervisor(
   );
   const initialReady = Promise.all(initial);
   initialReady.catch(() => {});
+  let startupComplete = false;
+  initialReady.then(
+    () => {
+      startupComplete = true;
+    },
+    () => {},
+  );
 
   async function maintain(channel) {
     let delay = 1000;
@@ -78,6 +85,6 @@ export function createSessionSupervisor(
           },
         ]),
       ),
-    ready: () => channels.every(({ session }) => session.healthy()),
+    ready: () => startupComplete && channels.every(({ session }) => session.healthy()),
   };
 }
