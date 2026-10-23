@@ -3,5 +3,6 @@ node_modules
 coverage
 artifacts
 .env
+.env.*
 tests
 AGENTS.md

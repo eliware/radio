@@ -1,0 +1,84 @@
+import { expect, jest, test } from "@jest/globals";
+import { getRuntimePaths } from "../src/runtime-paths.mjs";
+import { createRadioRuntime } from "../src/radio-runtime.mjs";
+
+const config = (serial, channel) => ({
+  CHANNEL: channel,
+  USERNAME: "user",
+  PASSWORD: "pw",
+  ISSUER: "issuer",
+  PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----",
+  SDR_SERIAL: serial,
+  FREQUENCY_MHZ: "155.1",
+  CTCSS_HZ: "77.0",
+  TONE: "1000",
+});
+
+test("builds one runtime from per-channel files and combines readiness", async () => {
+  jest.useFakeTimers();
+  let receiverReady = false;
+  const events = [];
+  const logs = [];
+  const log = Object.fromEntries(
+    ["debug", "info", "warn", "error"].map((level) => [
+      level,
+      (message, metadata) => logs.push({ level, message, metadata }),
+    ]),
+  );
+  let capturedOptions;
+  const runtime = await createRadioRuntime({
+    configPaths: ["pd", "fd"],
+    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+    writeConfig: async (_path, text) => events.push(text),
+    log,
+    makeSession: () => ({ healthy: () => true, close: () => {} }),
+    makeInput: () => ({ listen: async () => {}, close: async () => {} }),
+    present: () => true,
+    spawnProcess: () => {},
+    makeSessionSupervisor: (_channels, options) => {
+      capturedOptions = options;
+      return {
+        initialReady: Promise.resolve(),
+        ready: () => true,
+        status: () => ({ PD: { state: "online" }, FD: { state: "online" } }),
+        close: async () => events.push("sessions closed"),
+      };
+    },
+    makeAirbandSupervisor: (options) => {
+      expect(options.present).toEqual(expect.any(Function));
+      expect(options.spawnProcess).toBeDefined();
+      return {
+        ready: () => receiverReady,
+        status: () => ({ state: receiverReady ? "running" : "waiting" }),
+        close: async () => events.push("receiver closed"),
+      };
+    },
+  });
+  expect(runtime.ready()).toBe(false);
+  receiverReady = true;
+  expect(runtime.ready()).toBe(true);
+  expect(events[0]).toContain("udp_stream");
+  expect(runtime.status().channels.FD.state).toBe("online");
+  capturedOptions.onError(new Error("sample"));
+  const pause = capturedOptions.wait(0);
+  await jest.advanceTimersByTimeAsync(0);
+  await pause;
+  expect(logs.at(-1)).toMatchObject({ level: "error", metadata: { error: { message: "sample" } } });
+  await runtime.close();
+  jest.useRealTimers();
+  expect(events.slice(-2)).toEqual(["receiver closed", "sessions closed"]);
+});
+
+test("applies standard settings without opening services when no channel files are configured", async () => {
+  await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow("Two channels");
+  const paths = [];
+  await expect(
+    createRadioRuntime({
+      loadConfig: async (path) => {
+        paths.push(path);
+        throw new Error("missing config");
+      },
+    }),
+  ).rejects.toThrow("missing config");
+  expect(paths).toEqual(getRuntimePaths({}).configPaths);
+});

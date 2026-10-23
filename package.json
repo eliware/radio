@@ -2,37 +2,30 @@
   "name": "@eliware/radio",
   "version": "15.0.0",
   "type": "module",
-  "description": "Web-based SDR streaming",
+  "description": "NBFM receiver audio bridge to Zello channels",
   "keywords": [
     "radio",
     "rtl-sdr"
   ],
   "private": true,
   "bin": {
-    "radio": "bin/radio.mjs"
+    "radio": "bin/zello-radio.mjs"
   },
   "scripts": {
-    "start": "node bin/radio.mjs",
+    "start": "node bin/zello-radio.mjs",
     "test": "eliware-test",
     "lint": "eliware-test --lint",
     "audit": "eliware-test --audit",
     "format": "eliware-test --format",
-    "format:check": "eliware-test --format-check",
-    "build": "webpack --config webpack.config.mjs",
-    "screenshots": "node bin/screenshots.mjs",
-    "lighthouse": "lighthouse http://127.0.0.1:3000 --only-categories=accessibility --output=json --output-path=artifacts/lighthouse.json --chrome-flags=--headless"
+    "format:check": "eliware-test --format-check"
   },
   "engines": {
     "node": ">=26"
   },
   "dependencies": {
     "@eliware/common": "^15.0.0",
-    "@fastify/static": "^10.1.7",
-    "fastify": "^5.12.7",
-    "lighthouse": "^13.5.0",
-    "puppeteer": "^25.16.0",
-    "webpack": "^5.112.1",
-    "webpack-cli": "^7.2.3"
+    "opusscript": "^0.1.1",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@eliware/test": "^15.0.0"
@@ -87,8 +80,7 @@
     "id": "E-1400",
     "apply": [
       "general",
-      "application",
-      "web"
+      "application"
     ]
   }
 }

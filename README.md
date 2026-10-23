@@ -2,7 +2,7 @@
 
 ## @eliware/radio [![License](https://img.shields.io/github/license/eliware/radio)](https://github.com/eliware/radio/blob/main/LICENSE) [![CI](https://github.com/eliware/radio/actions/workflows/ci.yaml/badge.svg)](https://github.com/eliware/radio/actions/workflows/ci.yaml)
 
-Web-based SDR streaming
+NBFM receiver audio bridge to Zello channels
 
 ## Table of Contents
 
@@ -16,101 +16,74 @@ Web-based SDR streaming
 - [Security](#security)
 - [Configuration](#configuration)
 - [Operations](#operations)
-- [Routes](#routes)
-- [Assets](#assets)
-- [Development server](#development-server)
-- [Build](#build)
-- [Deployment](#deployment)
 - [Support](#support)
 - [Links](#links)
 - [License](#license)
 
 ## Features
 
-Radio provides a private player for two NFM channels. RTLSDR-Airband applies configured
-CTCSS squelch and sends channel audio to Icecast.
+Radio receives two local NBFM channels and forwards CTCSS-gated audio to their Zello channels.
+Node.js supervises one RTLSDR-Airband process and keeps one Zello WebSocket connected for each
+channel. The sockets stay connected while the receivers are idle.
 
-The web player can be installed as a portrait, standalone PWA. It does not cache audio or
-provide offline playback.
+The receiver sends a one-second configured tone to both channels at container startup. Runtime
+audio uses the CTCSS squelch and notch settings from each channel file.
 
 ## Requirements
 
-Use Node.js 26 or later and npm. Docker Compose is available for container deployment.
+Use Node.js 26 or later and npm for local development. Container deployment uses Docker Compose.
+Two RTL-SDR dongles and production Zello issuer credentials are required.
 
 ## Setup
 
-Run `npm ci` to install web dependencies. Docker Compose loads the local `.env`, which contains
-channel settings, dongle serials, and the private Icecast source password. Do not commit it.
+Run `npm ci` to install dependencies. Copy `.env.example` to `.env.pd` and `.env.fd`, then fill in
+the matching channel account and SDR values. Set each private file to mode `600`.
 
 ## Usage
 
-Run `npm start` to launch only the web player. Use Docker Compose to run the full player,
-receiver, and Icecast stack. Read the [release notes](RELEASE_NOTES.md) for changes.
+Run `docker compose up -d --build` to start the bridge. Read the [release notes](RELEASE_NOTES.md)
+for changes. Check the [documentation index](docs/README.md) and [specifications](specs/README.md)
+for operating details and repository requirements.
 
 ## Development
 
-Read [AGENTS.md](AGENTS.md), the [specifications](specs/README.md), and the [documentation index](docs/README.md) before changing source files.
+Read [AGENTS.md](AGENTS.md) before changing source files. Implementation lives in `src/`, the
+container entry point is `bin/zello-radio.mjs`, and tests live in `tests/`.
 
 ## Testing
 
-Run `npm test` to validate the repository. Run `npm run build` to create the browser bundle.
+Run `npm test` for repository validation. Run `npm run format` to apply formatting and
+`npm run format:check` to check it.
 
 ## Troubleshooting
 
-Check `/health` and `/ready` for web status. The SDR and Icecast supervisors expose the same
-routes internally on ports `9101` and `9102`. Read logs with
-`docker compose logs -f radio sdr icecast`.
+Read container output with `docker compose logs -f radio`. `/health` responds while the Node.js
+supervisor runs. `/ready` succeeds only when RTLSDR-Airband runs and both Zello sessions are
+connected and logged in.
 
 ## Security
 
-The status page has no authentication. Keep the app on a trusted network.
+Keep `.env.pd` and `.env.fd` private. They contain account passwords and signing keys. The files
+are excluded from Git and the Docker build context.
 
 ## Configuration
 
-Set the spare SDR dongle serials and a random `ICECAST_SOURCE_PASSWORD` in `.env`. Police and
-Fire frequency and PL values are also read from `.env`. Set `PORT` to change the player port.
-The default is `3000`.
+Each channel file contains `CHANNEL`, `USERNAME`, `PASSWORD`, `ISSUER`, `PRIVATE_KEY`, `SDR_SERIAL`,
+`FREQUENCY_MHZ`, `CTCSS_HZ`, and `TONE`. Radio signs a production JWT with `ISSUER` and
+`PRIVATE_KEY`. Do not use a Sample Development Token.
 
 ## Operations
 
-Use `docker compose up -d --build` to build and start all three containers. Use
-`docker compose down` to stop them.
+Compose runs one container with Node.js as PID 1 and one RTLSDR-Airband process. The container
+checks for both dongle serials, connects to Zello, then starts the receiver. Each Zello socket stays
+open across radio transmissions and uses exponential reconnect delays capped at five minutes.
 
-## Routes
+The status endpoints use port `9101`, bound to localhost. Compose mounts both channel files as
+read-only and passes USB devices through `/dev/bus/usb`. Run `docker compose down` to stop the bridge.
 
-- `GET /` serves the status page.
-- `GET /health` reports process health.
-- `GET /ready` reports application readiness.
-- `GET /channels` reports Police and Fire receiver states separately.
-- `GET /streams/police.mp3` proxies the Police audio stream.
-- `GET /streams/fire.mp3` proxies the Fire audio stream.
-
-Both status routes return HTTP 200 and a JSON status value.
-
-## Assets
-
-The app serves files from `public/` and `dist/`. Webpack writes the browser bundle to
-`dist/client.js`. The player page has separate Police and Fire audio controls. The web manifest,
-app icons, and install screenshots are in `public/`. Run `npm run screenshots` while the app is
-available to refresh the desktop screenshot and PWA assets.
-
-## Development server
-
-Run `npm run build`, then run `npm start`. Open `http://localhost:3000` in a browser.
-
-## Build
-
-Run `npm run build` to bundle readiness, receiver state, and audio status updates.
-
-## Deployment
-
-Run `docker compose up -d --build`. On this server, open `http://localhost:3001`.
-Radar uses port `3000`. Confirm the player health routes return status 200. The SDR remains
-unready until both spare dongle serial numbers are configured.
-
-The NAS nginx virtual host at `radio.purinton.us` proxies HTTPS traffic to `127.0.0.1:3001`
-using the existing `purinton.us` wildcard certificate. Its source configuration is
-`nginx/radio.purinton.us.conf`.
+Logs are timestamped JSON records with `debug`, `info`, `warn`, and `error` levels. Set `LOG_LEVEL`
+to set the minimum output level. The default is `info`. The logger redacts credential fields and
+known values from channel configuration files.
 
 ## Support
 

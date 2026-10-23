@@ -1,3 +1,3 @@
 # Documentation
 
-- [Radio server](radio-server.md) describes the web routes, runtime settings, and deployment.
+- [Radio bridge](radio-server.md) describes channel settings and container operations.

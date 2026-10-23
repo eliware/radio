@@ -1,82 +1,29 @@
 services:
   radio:
-    build: .
-    environment:
-      PORT: ${PORT:-3000}
-      ICECAST_HOST: icecast
-      ICECAST_PORT: 8000
-      SDR_HOST: sdr
-      SDR_PORT: 9101
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - >-
-          fetch('http://127.0.0.1:${PORT:-3000}/ready').then((r) => process.exit(r.ok ? 0 :
-          1)).catch(() => process.exit(1))
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    ports:
-      - "${PORT:-3000}:${PORT:-3000}"
-    restart: unless-stopped
-
-  sdr:
     build:
       context: .
-      dockerfile: docker/sdr/Dockerfile
+      dockerfile: docker/radio/Dockerfile
     environment:
-      SDR_HEALTH_PORT: 9101
-      RADIO_POLICE_SDR_SERIAL: ${RADIO_POLICE_SDR_SERIAL:-}
-      RADIO_POLICE_FREQUENCY_MHZ: ${RADIO_POLICE_FREQUENCY_MHZ}
-      RADIO_POLICE_PL_HZ: ${RADIO_POLICE_PL_HZ}
-      RADIO_FIRE_SDR_SERIAL: ${RADIO_FIRE_SDR_SERIAL:-}
-      RADIO_FIRE_FREQUENCY_MHZ: ${RADIO_FIRE_FREQUENCY_MHZ}
-      RADIO_FIRE_PL_HZ: ${RADIO_FIRE_PL_HZ}
-      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD:?Set ICECAST_SOURCE_PASSWORD in .env}
+      RADIO_HEALTH_PORT: 9101
+      RADIO_CONFIG_DIR: /run/radio
+      LOG_LEVEL: info
+    volumes:
+      - ./.env.pd:/run/radio/police.env:ro
+      - ./.env.fd:/run/radio/fire.env:ro
     devices:
       - /dev/bus/usb:/dev/bus/usb
-    expose:
-      - "9101"
-    depends_on:
-      icecast:
-        condition: service_healthy
+    ports:
+      - "127.0.0.1:9101:9101"
     healthcheck:
       test:
         - CMD
         - node
         - -e
         - >-
-          fetch('http://127.0.0.1:9101/health').then((r) => process.exit(r.ok ? 0 :
+          fetch('http://127.0.0.1:9101/ready').then((r) => process.exit(r.ok ? 0 :
           1)).catch(() => process.exit(1))
       interval: 15s
       timeout: 3s
       retries: 3
-      start_period: 10s
-    restart: unless-stopped
-
-  icecast:
-    build:
-      context: .
-      dockerfile: docker/icecast/Dockerfile
-    environment:
-      ICECAST_HEALTH_PORT: 9102
-      ICECAST_SOURCE_PASSWORD: ${ICECAST_SOURCE_PASSWORD:?Set ICECAST_SOURCE_PASSWORD in .env}
-    expose:
-      - "8000"
-      - "9102"
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - >-
-          fetch('http://127.0.0.1:9102/ready').then((r) => process.exit(r.ok ? 0 :
-          1)).catch(() => process.exit(1))
-      interval: 15s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
