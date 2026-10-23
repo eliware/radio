@@ -1,5 +1,6 @@
-import { createLogger, defaultPolicy, redactText, safeSerialize } from "@eliware/common";
+import { createLogger, defaultPolicy } from "@eliware/common";
 import { knownSecrets, redactErrorText } from "./logging/error-details.mjs";
+import { sanitizeMetadata } from "./logging/metadata.mjs";
 
 const privateKeys = [
   ...defaultPolicy.keys,
@@ -27,25 +28,12 @@ export function createRadioLogger({
     methods.map((method) => [
       method,
       (message, metadata = {}) =>
-        base[method](redactErrorText(message, secrets), safeMetadata(metadata, secrets)),
+        base[method](
+          redactErrorText(message, secrets),
+          sanitizeMetadata(metadata, secrets, privateKeys),
+        ),
     ]),
   );
-}
-
-function safeMetadata(metadata, secrets) {
-  const bounded = safeSerialize(metadata, { keys: privateKeys });
-  return redactStrings(bounded, secrets);
-}
-
-function redactStrings(value, secrets) {
-  if (typeof value === "string") return redactText(value, { secrets });
-  if (Array.isArray(value)) return value.map((item) => redactStrings(item, secrets));
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, redactStrings(item, secrets)]),
-    );
-  }
-  return value;
 }
 
 export const logger = createRadioLogger({ secrets: knownSecrets });
