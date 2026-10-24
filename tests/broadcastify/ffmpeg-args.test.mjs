@@ -34,6 +34,8 @@ test("builds a paced mono MP3 Icecast command and encodes credentials", () => {
     "mp3",
     "-ice_name",
     "PD",
+    "-legacy_icecast",
+    "1",
     "icecast://source:p%40ss%20word@ice.example.org:8000/windham",
   ]);
 });

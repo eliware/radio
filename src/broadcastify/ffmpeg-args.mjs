@@ -25,6 +25,8 @@ export function createFfmpegArgs(settings) {
     "mp3",
     "-ice_name",
     settings.name,
+    "-legacy_icecast",
+    "1",
     target,
   ];
 }
