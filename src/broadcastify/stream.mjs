@@ -9,20 +9,14 @@ export function createBroadcastifyStream(settings, options = {}) {
     clearIntervalImpl = clearInterval,
   } = options;
   let keepalive,
-    reportedBackpressure = false,
-    closed = false;
+    reportedBackpressure = false;
+  let closed = false;
   const supervisor = createBroadcastifySupervisor(settings, options);
   const queue = createPcmQueue(onError);
 
   function send(pcm) {
     const child = supervisor.child;
     if (!child?.stdin?.writable) return;
-    if (child.stdin.writableLength > maxBufferedBytes) {
-      if (!reportedBackpressure) onError(new Error("Broadcastify audio pipe is congested"));
-      reportedBackpressure = true;
-      return;
-    }
-    reportedBackpressure = false;
     try {
       child.stdin.write(pcm);
     } catch {
@@ -35,10 +29,17 @@ export function createBroadcastifyStream(settings, options = {}) {
   }
 
   function pump() {
-    if (!supervisor.child) {
+    const child = supervisor.child;
+    if (!child) {
       queue.clear();
       return;
     }
+    if (child.stdin.writableLength > maxBufferedBytes) {
+      if (!reportedBackpressure) onError(new Error("Broadcastify audio pipe is congested"));
+      reportedBackpressure = true;
+      return;
+    }
+    reportedBackpressure = false;
     send(queue.next());
   }
 

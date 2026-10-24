@@ -5,6 +5,7 @@ import { createBroadcastifySupervisor } from "../../src/broadcastify/supervisor.
 function childProcess() {
   const child = new EventEmitter();
   child.stdin = Object.assign(new EventEmitter(), { end: jest.fn() });
+  child.stderr = new EventEmitter();
   child.kill = jest.fn();
   return child;
 }
@@ -16,7 +17,7 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   const onError = jest.fn();
   const spawnProcess = jest.fn(() => children.shift());
   const supervisor = createBroadcastifySupervisor(
-    { enabled: true },
+    { enabled: true, name: "Fire", password: "private", mount: "/mount" },
     {
       spawnProcess,
       onError,
@@ -35,7 +36,11 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   const stable = timers.find((timer) => timer.ms === 60000);
   stable.callback();
   const first = spawnProcess.mock.results[0].value;
-  first.emit("close", 1);
+  first.stderr.emit("data", "Connection to icecast://source:private@host.example/mount failed");
+  first.emit("close", 1, null);
+  expect(onError).toHaveBeenCalledWith(
+    new Error("Fire FFmpeg exited (code 1: Connection to icecast://[redacted] failed)"),
+  );
   expect(supervisor.status()).toEqual({ state: "retrying" });
   const retry = timers.find((timer) => timer.ms === 1000);
   retry.callback();
@@ -72,6 +77,18 @@ test("reports process errors once and retries after the current child closes", (
   expect(onError).toHaveBeenCalledTimes(1);
   timers.find((timer) => timer.ms === 1000).callback();
   expect(supervisor.child).toBeDefined();
+  supervisor.close();
+});
+
+test("reports signal exits when FFmpeg has no stderr output", () => {
+  const child = childProcess();
+  const onError = jest.fn();
+  const supervisor = createBroadcastifySupervisor(
+    { enabled: true },
+    { spawnProcess: () => child, onError },
+  );
+  child.emit("close", null, "SIGKILL");
+  expect(onError).toHaveBeenCalledWith(new Error("Broadcastify FFmpeg exited (SIGKILL)"));
   supervisor.close();
 });
 

@@ -12,7 +12,7 @@ test("builds a paced mono MP3 Icecast command and encodes credentials", () => {
   expect(args).toEqual([
     "-hide_banner",
     "-loglevel",
-    "warning",
+    "info",
     "-f",
     "s16le",
     "-ar",

@@ -30,8 +30,12 @@ export function createBroadcastifySupervisor(
     state = "connecting";
     try {
       let failed = false;
+      let stderr = "";
       child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
-        stdio: ["pipe", "ignore", "ignore"],
+        stdio: ["pipe", "ignore", "pipe"],
+      });
+      child.stderr?.on("data", (chunk) => {
+        stderr = `${stderr}${chunk}`.slice(-4096);
       });
       child.stdin.on("error", () => onError(new Error("Broadcastify audio pipe failed")));
       child.on("error", () => {
@@ -41,12 +45,18 @@ export function createBroadcastifySupervisor(
         onError(new Error("Broadcastify FFmpeg process failed"));
         scheduleRestart();
       });
-      child.on("close", () => {
+      child.on("close", (code, signal) => {
         if (stableTimer) clearTimeoutImpl(stableTimer);
         stableTimer = undefined;
         child = undefined;
         if (!closed) {
-          if (!failed) onError(new Error("Broadcastify FFmpeg exited"));
+          if (!failed) {
+            const detail = sanitizeStderr(stderr, settings);
+            const reason = [code === null ? signal : `code ${code}`, detail]
+              .filter(Boolean)
+              .join(": ");
+            onError(new Error(`${settings.name || "Broadcastify"} FFmpeg exited (${reason})`));
+          }
           scheduleRestart();
         }
       });
@@ -79,4 +89,11 @@ export function createBroadcastifySupervisor(
       state = "closed";
     },
   };
+}
+
+function sanitizeStderr(stderr, settings) {
+  let detail = stderr.trim().split("\n").slice(-12).join(" | ");
+  if (settings.password) detail = detail.replaceAll(settings.password, "[redacted]");
+  if (settings.mount) detail = detail.replaceAll(settings.mount, "/[redacted]");
+  return detail.replace(/icecast:\/\/[^\s'"|]+/g, "icecast://[redacted]");
 }

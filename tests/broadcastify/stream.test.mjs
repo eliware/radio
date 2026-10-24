@@ -14,46 +14,51 @@ function childProcess() {
   return child;
 }
 
-test("pumps PCM to FFmpeg and handles pipe pressure and write failures", () => {
-  const child = childProcess();
-  const onError = jest.fn();
+function makeStream(child, options = {}) {
   let pump;
   const stream = createBroadcastifyStream(
     { enabled: true },
     {
       spawnProcess: () => child,
-      onError,
-      setIntervalImpl: (callback) => {
-        pump = callback;
-        return 1;
-      },
+      setIntervalImpl: (callback) => ((pump = callback), 1),
       clearIntervalImpl: jest.fn(),
+      ...options,
     },
   );
-  const pcm = Buffer.alloc(960);
+  return { stream, pump: () => pump() };
+}
+
+test("sends silence continuously and preserves queued PCM during pipe pressure", () => {
+  const child = childProcess();
+  const onError = jest.fn();
+  const { stream, pump } = makeStream(child, { onError });
+  const pcm = Buffer.alloc(960, 1);
+  pump();
+  expect(child.stdin.write).toHaveBeenLastCalledWith(Buffer.alloc(960));
   stream.write(pcm);
   pump();
-  expect(child.stdin.write).toHaveBeenCalledWith(pcm);
+  expect(child.stdin.write).toHaveBeenLastCalledWith(pcm);
   child.stdin.writableLength = 96001;
   stream.write(pcm);
   pump();
   pump();
   expect(onError).toHaveBeenCalledTimes(1);
+  expect(child.stdin.write).toHaveBeenCalledTimes(2);
   child.stdin.writableLength = 0;
   child.stdin.write.mockImplementationOnce(() => {
     throw new Error("broken pipe");
   });
-  stream.write(pcm);
   pump();
   expect(onError).toHaveBeenCalledTimes(2);
   child.stdin.writable = false;
   stream.write(pcm);
   pump();
+  expect(child.stdin.write).toHaveBeenCalledTimes(3);
   stream.close();
   expect(child.kill).toHaveBeenCalledWith("SIGTERM");
 });
 
-test("keeps disabled output inert and clears its timer on close", () => {
+test("keeps disabled output inert", () => {
   const stream = createBroadcastifyStream({ enabled: false });
   stream.write(Buffer.alloc(960));
   expect(stream.ready()).toBe(true);
@@ -61,35 +66,24 @@ test("keeps disabled output inert and clears its timer on close", () => {
   stream.close();
 });
 
-test("drops queued PCM while the supervisor has no child", () => {
+test("clears queued PCM while FFmpeg is restarting", () => {
   const child = childProcess();
-  const timeouts = [];
-  let pump;
+  const timers = [];
   let starts = 0;
-  const stream = createBroadcastifyStream(
-    { enabled: true },
-    {
-      spawnProcess: () => {
-        starts += 1;
-        if (starts === 1) throw new Error("not installed");
-        return child;
-      },
-      setTimeoutImpl: (callback) => {
-        timeouts.push(callback);
-        return timeouts.length;
-      },
-      clearTimeoutImpl: jest.fn(),
-      setIntervalImpl: (callback) => {
-        pump = callback;
-        return 1;
-      },
+  const { stream, pump } = makeStream(child, {
+    spawnProcess: () => {
+      starts += 1;
+      if (starts === 1) throw new Error("not installed");
+      return child;
     },
-  );
+    setTimeoutImpl: (callback) => (timers.push(callback), timers.length),
+  });
   const audio = Buffer.alloc(960, 1);
   stream.write(audio);
   pump();
-  timeouts[0]();
+  timers[0]();
   pump();
+  expect(child.stdin.write).toHaveBeenCalledWith(Buffer.alloc(960));
   expect(child.stdin.write).not.toHaveBeenCalledWith(audio);
   stream.close();
 });
@@ -99,11 +93,7 @@ test("uses the default error callback when an enabled stream write throws", () =
   child.stdin.write.mockImplementation(() => {
     throw new Error("pipe error");
   });
-  let pump;
-  const stream = createBroadcastifyStream(
-    { enabled: true },
-    { spawnProcess: () => child, setIntervalImpl: (callback) => ((pump = callback), 1) },
-  );
+  const { stream, pump } = makeStream(child);
   stream.write(Buffer.alloc(960));
   expect(() => pump()).not.toThrow();
   stream.close();

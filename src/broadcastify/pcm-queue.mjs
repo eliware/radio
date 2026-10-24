@@ -1,5 +1,5 @@
 const silence = Buffer.alloc(960);
-const maxQueuedBytes = 96000;
+const maxQueuedBytes = 960000;
 
 export function createPcmQueue(onError) {
   const chunks = [];
@@ -10,9 +10,9 @@ export function createPcmQueue(onError) {
       if (pcm.length % 2) return;
       chunks.push(pcm);
       queuedBytes += pcm.length;
-      if (queuedBytes > maxQueuedBytes) {
+      while (queuedBytes > maxQueuedBytes) {
         queuedBytes -= chunks.shift().length;
-        if (!congested) onError(new Error("Broadcastify audio queue is congested"));
+        if (!congested) onError(new Error("Broadcastify audio queue exceeded 10 seconds"));
         congested = true;
       }
     },
@@ -20,7 +20,7 @@ export function createPcmQueue(onError) {
       const pcm = chunks.shift();
       if (!pcm) return silence;
       queuedBytes -= pcm.length;
-      congested = false;
+      if (queuedBytes <= maxQueuedBytes / 2) congested = false;
       return pcm;
     },
     clear() {

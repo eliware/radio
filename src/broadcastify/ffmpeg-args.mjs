@@ -3,7 +3,7 @@ export function createFfmpegArgs(settings) {
   return [
     "-hide_banner",
     "-loglevel",
-    "warning",
+    "info",
     "-f",
     "s16le",
     "-ar",
