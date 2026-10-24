@@ -26,6 +26,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY src/ ./src/
-COPY bin/zello-radio.mjs ./bin/zello-radio.mjs
+COPY bin/radio.mjs ./bin/radio.mjs
 EXPOSE 1400
-CMD ["node", "bin/zello-radio.mjs"]
+CMD ["node", "bin/radio.mjs"]

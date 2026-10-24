@@ -11,10 +11,10 @@
   ],
   "private": true,
   "bin": {
-    "radio": "bin/zello-radio.mjs"
+    "radio": "bin/radio.mjs"
   },
   "scripts": {
-    "start": "node bin/zello-radio.mjs",
+    "start": "node bin/radio.mjs",
     "test": "eliware-test",
     "lint": "eliware-test --lint",
     "audit": "eliware-test --audit",
