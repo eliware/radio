@@ -2,7 +2,7 @@
 import { registerHandlers, registerSignals } from "@eliware/common";
 import { errorDetails } from "../src/logging/error-details.mjs";
 import { logger } from "../src/logger.mjs";
-import { createRadioRuntime } from "../src/radio-runtime.mjs";
+import { createRadioRuntime } from "../src/radio/runtime.mjs";
 import { createStatusServer } from "../src/status-server.mjs";
 
 let runtime;
