@@ -1,14 +1,17 @@
 import { chmod, writeFile } from "node:fs/promises";
-import { errorDetails, rememberSecrets } from "./logging/error-details.mjs";
-import { logger } from "./logger.mjs";
-import { getRuntimePaths } from "./runtime-paths.mjs";
-import { createAirbandSupervisor } from "./airband-supervisor.mjs";
-import { createAudioInput } from "./audio/input.mjs";
-import { loadRnnoise } from "./audio/rnnoise.mjs";
-import { createAirbandConfig } from "./airband/config.mjs";
-import { loadChannelConfig } from "./channel-config.mjs";
-import { createSessionSupervisor } from "./session-supervisor.mjs";
-import { createZelloSession } from "./zello/session.mjs";
+import { errorDetails, rememberSecrets } from "../logging/error-details.mjs";
+import { logger } from "../logger.mjs";
+import { getRuntimePaths } from "../runtime-paths.mjs";
+import { createAirbandSupervisor } from "../airband-supervisor.mjs";
+import { createAudioInput } from "../audio/input.mjs";
+import { loadRnnoise } from "../audio/rnnoise.mjs";
+import { createAirbandConfig } from "../airband/config.mjs";
+import { loadChannelConfig } from "../channel-config.mjs";
+import { createSessionSupervisor } from "../session-supervisor.mjs";
+import { createZelloSession } from "../zello/session.mjs";
+import { createBroadcastifyStream } from "../broadcastify/stream.mjs";
+import { createBroadcastifyRuntime } from "../broadcastify/runtime.mjs";
+import { createRadioChannels, createRadioInputs } from "./channels.mjs";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
@@ -24,6 +27,7 @@ export async function createRadioRuntime({
   loadNoise = loadRnnoise,
   makeSessionSupervisor = createSessionSupervisor,
   makeAirbandSupervisor = createAirbandSupervisor,
+  makeBroadcastify = createBroadcastifyStream,
   present,
   spawnProcess,
   wait = pause,
@@ -37,26 +41,14 @@ export async function createRadioRuntime({
     onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
   await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
   await chmodConfig(airbandPath, 0o600);
-  const channels = configs.map((config) => ({
-    config,
-    name: config.CHANNEL,
-    session: makeSession(config),
-    status: "connecting",
-    tonePlayed: false,
-  }));
-  const inputs = channels.map(({ session, config }) =>
-    makeInput({
-      port: Number(config.UDP_PORT),
-      session,
-      rnnoise,
-      rnnoiseMix: Number(config.RNNOISE) / 100,
-      onError: reportError,
-    }),
-  );
+  const broadcastify = createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
+  const broadcasts = broadcastify.outputs;
+  const channels = createRadioChannels(configs, makeSession);
+  const inputs = createRadioInputs(channels, broadcasts, rnnoise, makeInput, reportError);
   const listening = await Promise.allSettled(inputs.map((input) => input.listen()));
   const listenFailure = listening.find(({ status }) => status === "rejected");
   if (listenFailure) {
-    await Promise.allSettled(inputs.map((input) => input.close()));
+    await Promise.allSettled([...inputs.map((input) => input.close()), broadcastify.close()]);
     throw listenFailure.reason;
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
@@ -76,6 +68,7 @@ export async function createRadioRuntime({
   } catch (error) {
     await Promise.allSettled([
       ...inputs.map((input) => input.close()),
+      broadcastify.close(),
       ...(sessions ? [sessions.close()] : []),
     ]);
     throw error;
@@ -84,13 +77,18 @@ export async function createRadioRuntime({
     close: async () => {
       const closing = await Promise.allSettled([
         ...inputs.map((input) => Promise.resolve().then(() => input.close())),
+        Promise.resolve().then(() => broadcastify.close()),
         Promise.resolve().then(() => sessions.close()),
         Promise.resolve().then(() => airband.close()),
       ]);
       const failure = closing.find(({ status }) => status === "rejected");
       if (failure) throw failure.reason;
     },
-    ready: () => airband.ready() && sessions.ready(),
-    status: () => ({ receiver: airband.status(), channels: sessions.status() }),
+    ready: () => airband.ready() && sessions.ready() && broadcastify.ready(),
+    status: () => ({
+      receiver: airband.status(),
+      channels: sessions.status(),
+      broadcastify: broadcastify.status(channels),
+    }),
   };
 }

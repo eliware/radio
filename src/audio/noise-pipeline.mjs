@@ -2,10 +2,24 @@ import { createAudioPacketizer } from "./packetizer.mjs";
 import { createAudioResampler } from "./resampler.mjs";
 import { createAudioDenoiser } from "./denoiser.mjs";
 
-export function createNoisePipeline({ rnnoise, rnnoiseMix = 1, onPacket, onError = () => {} }) {
+export function createNoisePipeline({
+  rnnoise,
+  rnnoiseMix = 1,
+  onPacket,
+  onProcessedPcm = () => {},
+  onError = () => {},
+}) {
   let closed = false;
   const packetizer = createAudioPacketizer({ onPacket });
-  const denoiser = createAudioDenoiser({ rnnoise, rnnoiseMix, onPcm: packetizer.write, onError });
+  const denoiser = createAudioDenoiser({
+    rnnoise,
+    rnnoiseMix,
+    onPcm: (pcm) => {
+      onProcessedPcm(pcm);
+      packetizer.write(pcm);
+    },
+    onError,
+  });
   const resampler = createAudioResampler({ onPcm: denoiser.write, onError });
   return {
     write: (floatPcm) => {

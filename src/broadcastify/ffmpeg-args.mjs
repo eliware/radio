@@ -1,0 +1,30 @@
+export function createFfmpegArgs(settings) {
+  const target = `icecast://source:${encodeURIComponent(settings.password)}@${settings.host}:${settings.port}${settings.mount}`;
+  return [
+    "-hide_banner",
+    "-loglevel",
+    "warning",
+    "-f",
+    "s16le",
+    "-ar",
+    "48000",
+    "-ac",
+    "1",
+    "-i",
+    "pipe:0",
+    "-vn",
+    "-ar",
+    "22050",
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "16k",
+    "-content_type",
+    "audio/mpeg",
+    "-f",
+    "mp3",
+    "-ice_name",
+    settings.name,
+    target,
+  ];
+}

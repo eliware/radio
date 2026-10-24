@@ -6,6 +6,7 @@ export function createAudioTransmission({
   session,
   rnnoise,
   rnnoiseMix = 1,
+  onProcessedPcm,
   createProcessor = createNoisePipeline,
   idleMs = 500,
   onError = () => {},
@@ -16,6 +17,7 @@ export function createAudioTransmission({
   const processor = createProcessor({
     rnnoise,
     rnnoiseMix,
+    onProcessedPcm,
     onPacket: (packet) => streamId && session.sendAudio(streamId, packet),
     onError,
   });

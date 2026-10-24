@@ -18,7 +18,7 @@ RUN git clone --depth 1 --branch v5.1.0 \
 
 FROM node:26-alpine
 ENV NODE_ENV=production
-RUN apk add --no-cache ca-certificates libstdc++ lame-libs libshout libconfig++ \
+RUN apk add --no-cache ca-certificates ffmpeg libstdc++ lame-libs libshout libconfig++ \
     fftw-single-libs libusb libpulse soapy-sdr
 COPY --from=build /usr/lib/librtlsdr.so* /usr/lib/
 COPY --from=build /build/airband-build/src/rtl_airband /usr/local/bin/rtl_airband

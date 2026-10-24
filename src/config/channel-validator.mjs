@@ -1,3 +1,5 @@
+import { getBroadcastifySettings } from "../broadcastify/settings.mjs";
+
 const ranges = { FREQUENCY_MHZ: [24, 1766], CTCSS_HZ: [67, 254.1] };
 const requiredFields = [
   "CHANNEL",
@@ -29,5 +31,6 @@ export function validateChannelSettings(values) {
   values.UDP_PORT = String(udpPort);
   if (!values.PRIVATE_KEY.includes("BEGIN PRIVATE KEY")) throw new Error("PRIVATE_KEY must be PEM");
   if (values.TOKEN) throw new Error("Remove TOKEN; use issuer and private key for production auth");
+  getBroadcastifySettings(values);
   return values;
 }

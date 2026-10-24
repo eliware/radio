@@ -27,7 +27,8 @@ test tone. This confirms that the channel can receive audio from the bridge.
 
 Direct USB access uses `/dev/bus/usb`. The Compose file passes that device tree into the container.
 The app does not provide a web audio player or Icecast server. Listen through the configured Zello
-channels.
+channels. Optional Broadcastify Classic outputs can publish the post-RNNoise 90/10 processed audio.
+They remain disabled until Broadcastify approves the account and provides technical connection values.
 
 ## Setup
 
@@ -64,23 +65,35 @@ play after the Zello sessions connect.
 Each channel file is a Node.js dotenv-style file. Keep PEM keys inside quoted multiline values.
 The table lists the app's validation rules.
 
-| Key             | Required | Meaning and accepted values                                      |
-| --------------- | -------- | ---------------------------------------------------------------- |
-| `CHANNEL`       | Yes      | Exact destination channel name in Zello.                         |
-| `USERNAME`      | Yes      | Zello account name for this channel.                             |
-| `PASSWORD`      | Yes      | Password for the Zello account.                                  |
-| `ISSUER`        | Yes      | Issuer value for the production signing key.                     |
-| `PRIVATE_KEY`   | Yes      | PEM private key used to sign a production JWT.                   |
-| `SDR_SERIAL`    | Yes      | RTL-SDR serial number. Each channel file needs a unique value.   |
-| `FREQUENCY_MHZ` | Yes      | Receive frequency from 24 through 1766 MHz.                      |
-| `CTCSS_HZ`      | Yes      | CTCSS tone from 67 through 254.1 Hz.                             |
-| `TONE`          | Yes      | Startup test tone from 200 through 3000 Hz.                      |
-| `UDP_PORT`      | Yes      | Unique local UDP number from 1024 through 65535.                 |
-| `RNNOISE`       | No       | Percent of noise-reduced audio from 0 through 100. Default: 100. |
-| `PUBLIC_KEY`    | No       | Reference value only. The app does not read it.                  |
+| Key                     | Required   | Meaning and accepted values                                       |
+| ----------------------- | ---------- | ----------------------------------------------------------------- |
+| `CHANNEL`               | Yes        | Exact destination channel name in Zello.                          |
+| `USERNAME`              | Yes        | Zello account name for this channel.                              |
+| `PASSWORD`              | Yes        | Password for the Zello account.                                   |
+| `ISSUER`                | Yes        | Issuer value for the production signing key.                      |
+| `PRIVATE_KEY`           | Yes        | PEM private key used to sign a production JWT.                    |
+| `SDR_SERIAL`            | Yes        | RTL-SDR serial number. Each channel file needs a unique value.    |
+| `FREQUENCY_MHZ`         | Yes        | Receive frequency from 24 through 1766 MHz.                       |
+| `CTCSS_HZ`              | Yes        | CTCSS tone from 67 through 254.1 Hz.                              |
+| `TONE`                  | Yes        | Startup test tone from 200 through 3000 Hz.                       |
+| `UDP_PORT`              | Yes        | Unique local UDP number from 1024 through 65535.                  |
+| `RNNOISE`               | No         | Percent of noise-reduced audio from 0 through 100. Default: 100.  |
+| `BROADCASTIFY_ENABLED`  | No         | Set to `true` after approval and configuration. Default: `false`. |
+| `BROADCASTIFY_HOST`     | If enabled | Icecast source host from the Broadcastify Technicals page.        |
+| `BROADCASTIFY_PORT`     | If enabled | Icecast source port from the Broadcastify Technicals page.        |
+| `BROADCASTIFY_MOUNT`    | If enabled | Icecast source path, with its leading slash.                      |
+| `BROADCASTIFY_PASSWORD` | If enabled | Source password from the Broadcastify Technicals page.            |
+| `BROADCASTIFY_NAME`     | No         | Optional stream title. Defaults to `CHANNEL`.                     |
+| `PUBLIC_KEY`            | No         | Reference value only. The app does not read it.                   |
 
 `RNNOISE=100` sends fully noise-reduced audio. `RNNOISE=80` combines 80% noise-reduced audio with
 20% unprocessed audio. Lower values preserve more receiver noise along with the voice.
+
+Each enabled Broadcastify output receives the same post-RNNoise processed audio that is encoded for Zello. A
+separate FFmpeg process for each channel converts 48 kHz mono PCM to a 22.05 kHz, 16 kbps mono MP3
+source stream. Node keeps the source stream continuous by writing quiet audio between transmissions.
+Police and Fire use separate Icecast connections. Keep Broadcastify disabled and replace the
+template values only after Broadcastify approves the account and its Technicals values are available.
 
 Do not set `TOKEN`. The app rejects it and signs production JWTs from `ISSUER` and `PRIVATE_KEY`.
 The `PUBLIC_KEY` entry in the template is for reference and is not needed at runtime.
@@ -91,8 +104,9 @@ Node.js starts as the container's PID 1 process. It validates both channel files
 connections, writes an RTLSDR-Airband configuration to a temporary directory, and opens one UDP
 listener for each configured `UDP_PORT`.
 
-The app starts Zello reconnection and RTLSDR-Airband independently. It waits for both configured
-USB serials to appear. If a dongle is missing, it checks again every two seconds. If Airband exits,
+The app starts Zello sessions, optional Broadcastify encoders, and RTLSDR-Airband independently. It
+waits for both configured USB serials to appear. If a dongle is missing, it checks again every two
+seconds. If Airband exits,
 the retry interval increases from one to 30 seconds. Each Zello session reconnects at intervals
 that increase to five minutes. A stable Zello session resets its retry interval.
 
@@ -105,8 +119,9 @@ Compose publishes the status server on `127.0.0.1:1400`, so it is available on t
 The two HTTP routes return JSON:
 
 - `GET /health` returns HTTP 200 while the Node.js status server responds.
-- `GET /ready` returns HTTP 200 only when RTLSDR-Airband is running and both Zello sessions are
-  online. It returns HTTP 503 while startup or recovery is in progress.
+- `GET /ready` returns HTTP 200 only when RTLSDR-Airband is running, both Zello sessions are
+  online, and each enabled Broadcastify FFmpeg process is running. It returns HTTP 503 during
+  startup or recovery.
 - Other paths return HTTP 404.
 
 Both status responses include the receiver state and each channel's connection state. Docker's
@@ -143,6 +158,7 @@ also update the published host mapping and health-check URL in `compose.yaml`.
 | `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                                   |
 | Receiver waits for SDR devices       | Confirm both dongles are connected and their serials match `SDR_SERIAL`. Check USB access on the Linux host.                           |
 | A Zello channel stays offline        | Check the channel name, username, password, issuer, private key, and container network access.                                         |
+| A Broadcastify stream stays offline  | Check the enable flag, host, port, source path, password, and FFmpeg state in `/health`.                                               |
 | A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and the UDP port pair. Confirm Airband logs show output to the configured number. |
 | Voice sounds too filtered            | Lower `RNNOISE` to keep more unprocessed signal, then start the container again.                                                       |
 | Config validation fails              | Check required keys, numeric ranges, unique SDR serials and UDP numbers, and PEM formatting. Remove any `TOKEN` entry.                 |

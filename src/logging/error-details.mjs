@@ -5,7 +5,12 @@ export const knownSecrets = [];
 export function rememberSecrets(configs) {
   knownSecrets.push(
     ...configs
-      .flatMap((config) => [config.PASSWORD, config.PRIVATE_KEY, config.TOKEN])
+      .flatMap((config) => [
+        config.PASSWORD,
+        config.PRIVATE_KEY,
+        config.TOKEN,
+        config.BROADCASTIFY_PASSWORD,
+      ])
       .filter(Boolean),
   );
 }

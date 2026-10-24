@@ -22,7 +22,8 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio forwards two local NBFM receiver channels to their matching Zello channels.
+Radio forwards two local NBFM receiver channels to their matching Zello channels, with optional
+post-filter Broadcastify Classic feeds.
 
 ## Requirements
 
@@ -53,13 +54,13 @@ Run `npm run format` to apply formatting and `npm run format:check` to check it.
 ## Troubleshooting
 
 See [troubleshooting guidance](docs/radio-server.md#troubleshooting) and inspect `docker compose`
-logs. `/health` shows if the status server responds. `/ready` shows if the receiver
-and both Zello sessions are online.
+logs. `/health` shows if the status server responds. `/ready` shows if the receiver, both Zello
+sessions, and any enabled Broadcastify processes are active.
 
 ## Security
 
-Keep `.env.pd` and `.env.fd` private. They hold account passwords and signing keys. Git and the
-Docker build context exclude these files.
+Keep `.env.pd` and `.env.fd` private. They hold account passwords, signing keys, and optional
+Broadcastify credentials. Git and the Docker build context exclude these files.
 
 ## Configuration
 

@@ -5,18 +5,23 @@ directives:
     dos:
       - Run one Node.js PID 1 supervisor in one Radio container.
       - Run one RTLSDR-Airband process for the two configured NFM receivers.
-      - Read one private environment file for each Zello channel.
+      - Read one private environment file for each Zello destination.
       - Apply configured CTCSS squelch and notch before producing audio.
       - Send receiver audio only while its CTCSS squelch is open.
       - Keep one continuous authenticated WebSocket connection for each Zello channel.
       - Reconnect failed Zello WebSockets with exponential backoff.
+      - Send each channel's post-RNNoise audio to its optional Broadcastify Classic stream.
+      - Run one supervised FFmpeg process and Icecast source for each enabled stream.
+      - Send quiet audio between transmissions to keep each enabled Classic stream active.
       - Mint production JWTs from each channel issuer and private key.
       - Send each channel's configured one-second test tone once at container startup.
-      - Return readiness only when RTLSDR-Airband and both Zello WebSockets are connected.
+      - Include enabled FFmpeg processes in readiness checks.
       - Keep private channel environment files out of Git and Docker build context.
       - Expose local health and readiness endpoints.
     donts:
       - Do not use Zello Sample Development Tokens.
       - Do not open a Zello WebSocket for each transmission.
-      - Do not add VAD, audio filtering, a web player, or Icecast to this forwarding path.
-      - Do not add ADS-B, aircraft-tracking, or public data-sharing features.
+      - Keep Broadcastify audio on the shared RNNoise output path.
+      - Do not let a failed Broadcastify process stop Zello audio or the other FFmpeg process.
+      - Keep Broadcastify outputs stopped when their settings are disabled.
+      - Do not add ADS-B or aircraft-tracking features.
