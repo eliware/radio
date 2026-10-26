@@ -41,8 +41,12 @@ chmod 600 .env.pd .env.fd
 ```
 
 Edit each file with the matching channel account and SDR settings. Set distinct `SDR_SERIAL` and
-`UDP_PORT` values. Use the exact Zello channel name and the production `ISSUER` and `PRIVATE_KEY`
-from that channel's developer credentials. Do not use a sample development token.
+`UDP_PORT` values.
+
+`SDR_GAIN` controls that dongle's tuner amplification in dB. Begin at a low value. Use a larger
+value only when reception requires it. Too much amplification can overload the receiver. Use the
+exact Zello channel name and production `ISSUER` and `PRIVATE_KEY` from its developer credentials.
+Do not use a sample development token.
 
 Keep both files private. They contain account passwords and private signing keys. Git and the Docker
 build context exclude them. Compose mounts them read-only inside the container.
@@ -73,6 +77,7 @@ The table lists the app's validation rules.
 | `ISSUER`                | Yes        | Issuer value for the production signing key.                      |
 | `PRIVATE_KEY`           | Yes        | PEM private key used to sign a production JWT.                    |
 | `SDR_SERIAL`            | Yes        | RTL-SDR serial number. Each channel file needs a unique value.    |
+| `SDR_GAIN`              | No         | Tuner amplification from 0 to 49.6 dB. Default: 10.               |
 | `FREQUENCY_MHZ`         | Yes        | Receive frequency from 24 through 1766 MHz.                       |
 | `CTCSS_HZ`              | Yes        | CTCSS tone from 67 through 254.1 Hz.                              |
 | `TONE`                  | Yes        | Startup test tone from 200 through 3000 Hz.                       |
@@ -110,8 +115,9 @@ seconds. If Airband exits,
 the retry interval increases from one to 30 seconds. Each Zello session reconnects at intervals
 that increase to five minutes. A stable Zello session resets its retry interval.
 
-Airband uses 20 dB of tuner amplification, a 1.024 MHz sample rate, an 8 kHz NFM channel filter, and 300 µs
-de-emphasis. It sends mono 16 kHz float audio to `127.0.0.1` at each channel's `UDP_PORT`.
+Airband uses each channel's configured tuner amplification. It samples at 1.024 MHz and applies an
+8 kHz NFM channel filter and 300 µs de-emphasis. It sends mono 16 kHz float audio to `127.0.0.1` at
+each channel's `UDP_PORT`.
 
 ## Health and readiness
 

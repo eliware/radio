@@ -8,7 +8,8 @@ export function createAirbandConfig(channels) {
   const devices = channels.map((channel) => {
     const frequency = Number(channel.FREQUENCY_MHZ).toFixed(4);
     const tone = Number(channel.CTCSS_HZ).toFixed(1);
-    return `{ type = "rtlsdr"; serial = "${channel.SDR_SERIAL}"; gain = 20;
+    const gain = Number(channel.SDR_GAIN ?? 10);
+    return `{ type = "rtlsdr"; serial = "${channel.SDR_SERIAL}"; gain = ${gain};
       sample_rate = 1.024; centerfreq = ${frequency}; channels: ({ freq = ${frequency};
       modulation = "nfm"; ctcss = ${tone}; notch = ${tone}; bandwidth = 8000;
       tau = 300; outputs: ({

@@ -8,6 +8,7 @@ const valid = {
   PASSWORD: "pw",
   ISSUER: "issuer",
   SDR_SERIAL: "851",
+  SDR_GAIN: "10",
   UDP_PORT: "15581",
   FREQUENCY_MHZ: "155.1",
   CTCSS_HZ: "77.0",
@@ -15,7 +16,10 @@ const valid = {
 };
 
 test("validates channel credentials and normalizes the UDP port", () => {
-  expect(validateChannelSettings({ ...valid, UDP_PORT: "015581" }).UDP_PORT).toBe("15581");
+  expect(validateChannelSettings({ ...valid, UDP_PORT: "015581" })).toMatchObject({
+    UDP_PORT: "15581",
+    SDR_GAIN: "10",
+  });
 });
 
 test.each([
@@ -31,6 +35,15 @@ test.each([
   "UDP_PORT=1023\n",
   "UDP_PORT=65536\n",
   "UDP_PORT=15581.5\n",
+  "SDR_GAIN=invalid\n",
+  "SDR_GAIN=-1\n",
+  "SDR_GAIN=49.7\n",
 ])("rejects invalid channel or receiver settings: %s", (patch) =>
   expect(() => validateChannelSettings({ ...valid, ...parseEnv(patch) })).toThrow(),
 );
+
+test("defaults SDR gain to 10 dB", () => {
+  const settings = { ...valid };
+  delete settings.SDR_GAIN;
+  expect(validateChannelSettings(settings).SDR_GAIN).toBe("10");
+});

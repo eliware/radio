@@ -29,6 +29,10 @@ export function validateChannelSettings(values) {
   if (!Number.isInteger(udpPort) || udpPort < 1024 || udpPort > 65535)
     throw new Error("UDP_PORT must be an integer from 1024 to 65535");
   values.UDP_PORT = String(udpPort);
+  const gain = Number(values.SDR_GAIN ?? 10);
+  if (!Number.isFinite(gain) || gain < 0 || gain > 49.6)
+    throw new Error("SDR_GAIN must be a number from 0 to 49.6 dB");
+  values.SDR_GAIN = String(gain);
   if (!values.PRIVATE_KEY.includes("BEGIN PRIVATE KEY")) throw new Error("PRIVATE_KEY must be PEM");
   if (values.TOKEN) throw new Error("Remove TOKEN; use issuer and private key for production auth");
   getBroadcastifySettings(values);
