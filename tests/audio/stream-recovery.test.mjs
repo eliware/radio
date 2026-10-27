@@ -55,6 +55,86 @@ test("stops abandoned streams once the session is healthy", async () => {
   expect(stopped).toEqual([3, 4, 5, 6]);
 });
 
+test("retries abandoned stream cleanup without an explicit closed-state callback", async () => {
+  let healthy = false;
+  let retry;
+  const stopped = [];
+  const recovery = createAudioStreamRecovery({
+    session: { healthy: () => healthy, stopStream: async (id) => stopped.push(id) },
+    onError: jest.fn(),
+    now: () => 0,
+    setTimeoutImpl: (callback) => ((retry = callback), 1),
+    clearTimeoutImpl: jest.fn(),
+  });
+  recovery.abandon(7);
+  recovery.stopAbandoned();
+  expect(retry).toEqual(expect.any(Function));
+  healthy = true;
+  retry();
+  await Promise.resolve();
+  expect(stopped).toEqual([7]);
+});
+
+test("stops a disconnected stream after reconnect, even without later audio", async () => {
+  let healthy = true;
+  let now = 0;
+  let timerId = 0;
+  const timers = new Map();
+  let streamId = 0;
+  const events = [];
+  const transmission = createAudioTransmission({
+    rnnoise: {
+      frameSize: 480,
+      createDenoiseState: () => ({ processFrame: () => {}, destroy: () => {} }),
+    },
+    idleMs: 500,
+    now: () => now,
+    setTimeoutImpl: (callback, delay) => {
+      timerId += 1;
+      timers.set(timerId, { callback, delay });
+      return timerId;
+    },
+    clearTimeoutImpl: (id) => timers.delete(id),
+    createProcessor: () => ({ write: () => {}, finishTransmission: () => {}, close: () => {} }),
+    session: {
+      healthy: () => healthy,
+      startStream: async () => {
+        streamId += 1;
+        events.push(`start:${streamId}`);
+        return streamId;
+      },
+      sendAudio: () => {},
+      stopStream: async (id) => events.push(`stop:${id}`),
+    },
+  });
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = false;
+  now = 600;
+  const idle = [...timers.values()].find((timer) => timer.delay === 500);
+  timers.delete([...timers].find(([, timer]) => timer === idle)[0]);
+  idle.callback();
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = true;
+  const retry = [...timers.values()].find((timer) => timer.delay === 1000);
+  retry.callback();
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  expect(events).toEqual(["start:1", "stop:1"]);
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = false;
+  now = 1200;
+  const nextIdle = [...timers.values()].find((timer) => timer.delay === 500);
+  timers.delete([...timers].find(([, timer]) => timer === nextIdle)[0]);
+  nextIdle.callback();
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  healthy = true;
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
+  expect(events.slice(-2)).toEqual(["stop:2", "start:3"]);
+  await transmission.close();
+});
+
 test("shares concurrent abandoned cleanup and reports stop errors", async () => {
   let finishStop;
   const onError = jest.fn();

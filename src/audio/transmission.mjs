@@ -1,8 +1,6 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
 import { createAudioStreamRecovery } from "./stream-recovery.mjs";
 import { createTransmissionIdle } from "./transmission-idle.mjs";
-
-const INPUT_FRAME_BYTES = 320 * 4;
 export function createAudioTransmission({
   session,
   rnnoise,
@@ -31,11 +29,19 @@ export function createAudioTransmission({
     },
     onError,
   });
-  let pcm = Buffer.alloc(0),
-    streamId,
-    starting;
-  let closed = false;
-  const recovery = createAudioStreamRecovery({ session, onError, now });
+  let streamId,
+    starting,
+    closed = false,
+    pcm = Buffer.alloc(0);
+  const recovery = createAudioStreamRecovery({
+    session,
+    onError,
+    now,
+    setTimeoutImpl,
+    clearTimeoutImpl,
+    isClosed: () => closed,
+    onAbandonedStopped: () => !closed && pcm.length && begin(),
+  });
   const idle = createTransmissionIdle({
     idleMs,
     now,
@@ -51,11 +57,12 @@ export function createAudioTransmission({
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
       idle.reset();
+      recovery.stopAbandoned()?.catch(onError);
       return;
     }
-    while (streamId && pcm.length >= INPUT_FRAME_BYTES) {
-      const frame = pcm.subarray(0, INPUT_FRAME_BYTES);
-      pcm = pcm.subarray(INPUT_FRAME_BYTES);
+    while (streamId && pcm.length >= 320 * 4) {
+      const frame = pcm.subarray(0, 320 * 4);
+      pcm = pcm.subarray(320 * 4);
       try {
         processor.write(frame);
       } catch (error) {
@@ -65,7 +72,7 @@ export function createAudioTransmission({
           pcm = Buffer.alloc(0);
           recovery.failed(error);
           processor.finishTransmission();
-          stopAbandonedStreams()?.catch(onError);
+          recovery.stopAbandoned()?.catch(onError);
         } else {
           onError(error);
         }
@@ -73,12 +80,6 @@ export function createAudioTransmission({
       }
     }
   }
-  function stopAbandonedStreams() {
-    return recovery.stopAbandoned(() => {
-      if (!closed && pcm.length) begin();
-    });
-  }
-
   function begin() {
     if (
       closed ||
@@ -90,7 +91,7 @@ export function createAudioTransmission({
     )
       return;
     if (recovery.hasAbandoned) {
-      stopAbandonedStreams()?.catch(onError);
+      recovery.stopAbandoned()?.catch(onError);
       return;
     }
     starting = session
@@ -110,12 +111,11 @@ export function createAudioTransmission({
         starting = undefined;
       });
   }
-
   async function end(force = false) {
     if ((closed && !force) || !idle.isIdle(force)) return;
     if (starting) await starting;
     if (!idle.isIdle(force)) return;
-    pcm = pcm.subarray(0, pcm.length - (pcm.length % INPUT_FRAME_BYTES));
+    pcm = pcm.subarray(0, pcm.length - (pcm.length % (320 * 4)));
     flush();
     pcm = Buffer.alloc(0);
     processor.finishTransmission();
@@ -123,15 +123,15 @@ export function createAudioTransmission({
     streamId = undefined;
     await recovery.stopOrAbandon(id);
   }
-
   async function close() {
     if (closed) return;
     closed = true;
     idle.reset();
+    recovery.cancelAbandonedStop();
     if (starting) await starting;
-    await stopAbandonedStreams();
+    await recovery.stopAbandoned();
     await end(true);
-    await stopAbandonedStreams();
+    await recovery.stopAbandoned();
     processor.close();
   }
 

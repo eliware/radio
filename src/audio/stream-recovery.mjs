@@ -1,8 +1,47 @@
-export function createAudioStreamRecovery({ session, onError, now, maxRetryDelayMs = 30000 }) {
+export function createAudioStreamRecovery({
+  session,
+  onError,
+  now,
+  maxRetryDelayMs = 30000,
+  setTimeoutImpl,
+  clearTimeoutImpl,
+  isClosed = () => false,
+  onAbandonedStopped = () => {},
+}) {
   let retryAt = 0;
   let retryDelay = 1000;
   let abandonedIds = [];
   let stopping;
+  let abandonedStopTimer;
+
+  function scheduleAbandonedStop() {
+    if (
+      !setTimeoutImpl ||
+      abandonedStopTimer !== undefined ||
+      isClosed() ||
+      abandonedIds.length === 0
+    )
+      return;
+    abandonedStopTimer = setTimeoutImpl(() => {
+      abandonedStopTimer = undefined;
+      stopAbandoned();
+    }, 1000);
+  }
+
+  function stopAbandoned(onComplete = onAbandonedStopped) {
+    if (stopping || abandonedIds.length === 0) return stopping;
+    if (!session.healthy()) {
+      scheduleAbandonedStop();
+      return stopping;
+    }
+    const ids = abandonedIds;
+    abandonedIds = [];
+    stopping = Promise.all(ids.map((id) => session.stopStream(id).catch(onError))).finally(() => {
+      stopping = undefined;
+      onComplete();
+    });
+    return stopping;
+  }
 
   return {
     canStart: () => now() >= retryAt,
@@ -26,17 +65,13 @@ export function createAudioStreamRecovery({ session, onError, now, maxRetryDelay
     },
     stopOrAbandon(id) {
       if (id !== undefined) abandonedIds.push(id);
-      return this.stopAbandoned();
+      return stopAbandoned();
     },
-    stopAbandoned(onComplete = () => {}) {
-      if (stopping || !session.healthy() || abandonedIds.length === 0) return stopping;
-      const ids = abandonedIds;
-      abandonedIds = [];
-      stopping = Promise.all(ids.map((id) => session.stopStream(id).catch(onError))).finally(() => {
-        stopping = undefined;
-        onComplete();
-      });
-      return stopping;
+    stopAbandoned,
+    cancelAbandonedStop() {
+      if (abandonedStopTimer === undefined) return;
+      clearTimeoutImpl(abandonedStopTimer);
+      abandonedStopTimer = undefined;
     },
   };
 }

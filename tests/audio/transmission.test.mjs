@@ -1,6 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
 import { createAudioTransmission } from "../../src/audio/transmission.mjs";
-
 const rnnoise = {
   frameSize: 480,
   createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
@@ -30,7 +29,6 @@ test("streams gated audio once and stops after silence", async () => {
   expect(sent.length).toBeGreaterThan(0);
   expect(sent[0][0]).toBe(4);
 });
-
 test("drops buffered audio if the session disconnects during stream startup", async () => {
   jest.useFakeTimers();
   let healthy = true;
@@ -50,13 +48,13 @@ test("drops buffered audio if the session disconnects during stream startup", as
   healthy = false;
   finishStart(4);
   for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
-  expect(jest.getTimerCount()).toBe(0);
+  expect(jest.getTimerCount()).toBe(1);
   await transmission.close();
+  expect(jest.getTimerCount()).toBe(0);
   transmission.receive(Buffer.alloc(1280));
   jest.useRealTimers();
   expect(sent).toEqual([]);
 });
-
 test("stops a stream that starts after shutdown begins", async () => {
   let finishStart;
   const stopStream = jest.fn(async () => {});
@@ -78,44 +76,6 @@ test("stops a stream that starts after shutdown begins", async () => {
   expect(stopStream).toHaveBeenCalledWith(12);
   expect(processor.write).not.toHaveBeenCalled();
 });
-
-test("stops an abandoned stream after the Zello session reconnects", async () => {
-  let healthy = true;
-  let now = 0;
-  let idleCallback;
-  let streamId = 0;
-  const events = [];
-  const transmission = createAudioTransmission({
-    rnnoise,
-    idleMs: 500,
-    now: () => now,
-    setTimeoutImpl: (callback) => ((idleCallback = callback), 1),
-    clearTimeoutImpl: () => {},
-    createProcessor: () => ({ write: () => {}, finishTransmission: () => {}, close: () => {} }),
-    session: {
-      healthy: () => healthy,
-      startStream: async () => {
-        streamId += 1;
-        events.push(`start:${streamId}`);
-        return streamId;
-      },
-      sendAudio: () => {},
-      stopStream: async (id) => events.push(`stop:${id}`),
-    },
-  });
-  transmission.receive(Buffer.alloc(1280));
-  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
-  healthy = false;
-  now = 600;
-  idleCallback();
-  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
-  healthy = true;
-  transmission.receive(Buffer.alloc(1280));
-  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
-  expect(events.slice(0, 3)).toEqual(["start:1", "stop:1", "start:2"]);
-  await transmission.close();
-});
-
 test("reports processor write failures", async () => {
   const onError = jest.fn();
   const transmission = createAudioTransmission({
@@ -135,7 +95,6 @@ test("reports processor write failures", async () => {
   expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "processor failed" }));
   await transmission.close();
 });
-
 test("keeps one stream open when new audio arrives during startup", async () => {
   jest.useFakeTimers();
   let now = 0;
@@ -159,7 +118,6 @@ test("keeps one stream open when new audio arrives during startup", async () => 
   jest.useRealTimers();
   expect(starts).toHaveBeenCalledTimes(1);
 });
-
 test("ignores audio after close and tolerates close without a healthy session", async () => {
   const processor = {
     write: jest.fn(),
