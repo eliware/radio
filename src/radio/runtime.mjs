@@ -4,9 +4,9 @@ import { rememberSecrets } from "../logging/secrets.mjs";
 import { logger } from "../logger.mjs";
 import { getRuntimePaths } from "../runtime-paths.mjs";
 import { createAirbandSupervisor } from "../airband-supervisor.mjs";
+import { createAirbandConfig, validateAirbandChannels } from "../airband/config.mjs";
 import { createAudioInput } from "../audio/input.mjs";
 import { loadRnnoise } from "../audio/rnnoise.mjs";
-import { createAirbandConfig } from "../airband/config.mjs";
 import { loadChannelConfig } from "../channel-config.mjs";
 import { createSessionSupervisor } from "../session-supervisor.mjs";
 import { createZelloSession } from "../zello/session.mjs";
@@ -48,6 +48,7 @@ export async function createRadioRuntime({
   if (configPaths.length !== 2)
     throw new Error("Exactly two channel configuration files are required");
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
+  validateAirbandChannels(configs);
   const releaseSecrets = rememberSecrets(configs);
   let rnnoise;
   let reportError;

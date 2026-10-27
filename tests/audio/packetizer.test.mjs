@@ -26,6 +26,25 @@ test("buffers PCM and emits one encoded packet per complete Opus frame", () => {
   expect(harness.remove).toHaveBeenCalledTimes(1);
 });
 
+test("emits one 20 ms packet for each resampled PCM frame", () => {
+  const harness = createEncoderHarness();
+  const packetizer = createAudioPacketizer({
+    onPacket: () => {},
+    createEncoderImpl: harness.createEncoderImpl,
+  });
+  const frameBytes = FRAME_BYTES / 2;
+  packetizer.write(Buffer.alloc(frameBytes * 3 - 1));
+  expect(harness.encode).toHaveBeenCalledTimes(2);
+  packetizer.write(Buffer.alloc(1));
+  expect(harness.encode).toHaveBeenCalledTimes(3);
+  expect(harness.encode.mock.calls.map(([frame]) => frame.length)).toEqual([
+    frameBytes,
+    frameBytes,
+    frameBytes,
+  ]);
+  packetizer.close();
+});
+
 test("reset drops a partial frame and close is repeatable", () => {
   const harness = createEncoderHarness();
   const packets = [];

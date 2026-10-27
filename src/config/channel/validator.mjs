@@ -21,6 +21,7 @@ const allowedFields = new Set([
   "BROADCASTIFY_MOUNT",
   "BROADCASTIFY_PASSWORD",
   "BROADCASTIFY_NAME",
+  "PUBLIC_KEY",
 ]);
 
 function required(values, name) {

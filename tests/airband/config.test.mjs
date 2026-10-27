@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createAirbandConfig } from "../../src/airband/config.mjs";
+import { createAirbandConfig, validateAirbandChannels } from "../../src/airband/config.mjs";
 
 test("creates one RTLSDR-Airband process config with separate UDP feeds", () => {
   const base = {
@@ -27,6 +27,10 @@ test("creates one RTLSDR-Airband process config with separate UDP feeds", () => 
   expect(() => createAirbandConfig([base])).toThrow("distinct SDR serials");
   expect(() => createAirbandConfig([base, base])).toThrow("distinct SDR serials");
   expect(() => createAirbandConfig([base, { ...base, SDR_SERIAL: "853" }])).toThrow(
+    "distinct UDP ports",
+  );
+  expect(() => validateAirbandChannels([base, base])).toThrow("distinct SDR serials");
+  expect(() => validateAirbandChannels([base, { ...base, SDR_SERIAL: "853" }])).toThrow(
     "distinct UDP ports",
   );
 });

@@ -256,8 +256,9 @@ test("stops before retrying when an error callback shuts down the supervisor", a
   expect(failed.status().state).toBe("stopped");
 });
 
-test("settles shutdown if a child never emits its spawn event", async () => {
+test("force kills Airband after an error when no close event arrives", async () => {
   let child;
+  let forceKill;
   const supervisor = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
@@ -266,10 +267,19 @@ test("settles shutdown if a child never emits its spawn event", async () => {
     log: quietLog,
     present: async () => true,
     spawnProcess: () => (child = new EventEmitter()),
+    shutdownTimeoutMs: 10,
+    setTimeoutImpl: (callback) => ((forceKill = callback), 1),
+    clearTimeoutImpl: jest.fn(),
   });
   for (let attempt = 0; attempt < 20 && !child; attempt += 1) await Promise.resolve();
-  child.kill = jest.fn();
-  await supervisor.close();
+  child.kill = jest.fn((signal) => {
+    if (signal === "SIGKILL") child.emit("close", null, signal);
+  });
+  child.emit("error", new Error("process failed"));
+  const closing = supervisor.close();
   expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+  forceKill();
+  await closing;
+  expect(child.kill).toHaveBeenCalledWith("SIGKILL");
   expect(supervisor.status().state).toBe("stopped");
 });

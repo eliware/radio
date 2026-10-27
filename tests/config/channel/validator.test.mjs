@@ -22,6 +22,12 @@ test("validates channel credentials and normalizes the UDP port", () => {
   });
 });
 
+test("accepts the documented reference-only public key field", () => {
+  expect(validateChannelSettings({ ...valid, PUBLIC_KEY: "reference only" })).toMatchObject({
+    PUBLIC_KEY: "reference only",
+  });
+});
+
 test("leaves Broadcastify fields to the channel integration validator", () => {
   expect(validateChannelSettings({ ...valid, BROADCASTIFY_ENABLED: "invalid" })).toMatchObject({
     CHANNEL: "Police",

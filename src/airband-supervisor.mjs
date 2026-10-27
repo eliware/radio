@@ -13,6 +13,9 @@ export function createAirbandSupervisor({
   present = hasUsbSerial,
   spawnProcess = spawn,
   waitForDevices = waitForAirbandDevices,
+  shutdownTimeoutMs = 5000,
+  setTimeoutImpl = setTimeout,
+  clearTimeoutImpl = clearTimeout,
 }) {
   let stopped = false;
   let child;
@@ -50,8 +53,12 @@ export function createAirbandSupervisor({
         });
         const result = await new Promise((resolve) => {
           const process = child;
-          let spawned = false;
+          let shutdownTimer;
+          let finished = false;
           const finish = (result) => {
+            if (finished) return;
+            finished = true;
+            if (shutdownTimer) clearTimeoutImpl(shutdownTimer);
             finishStartingChild = undefined;
             process.off("spawn", onSpawn);
             process.off("error", onProcessError);
@@ -59,17 +66,22 @@ export function createAirbandSupervisor({
             resolve(result);
           };
           const onSpawn = () => {
-            spawned = true;
             state = "running";
             log.info("RTLSDR-Airband started");
           };
-          finishStartingChild = () => {
-            if (!spawned) finish({ signal: "SIGTERM" });
+          const stopChild = () => {
+            if (shutdownTimer) return;
+            shutdownTimer = setTimeoutImpl(() => {
+              process.kill?.("SIGKILL");
+              finish({ signal: "SIGKILL", ...(error && { cause: new Error(error) }) });
+            }, shutdownTimeoutMs);
+            process.kill?.("SIGTERM");
           };
+          finishStartingChild = stopChild;
           const onProcessError = (cause) => {
             state = "error";
             error = cause.message;
-            process.kill?.("SIGTERM");
+            stopChild();
           };
           const onClose = (code, signal) => {
             finish({ code, signal, ...(error && { cause: new Error(error) }) });
@@ -101,7 +113,6 @@ export function createAirbandSupervisor({
       resolveStop();
       state = "stopped";
       finishStartingChild?.();
-      child?.kill("SIGTERM");
       await task;
     },
     ready: () => state === "running",

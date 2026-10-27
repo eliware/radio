@@ -96,6 +96,28 @@ test("requires exactly two configured channels", async () => {
   expect(loadConfig).not.toHaveBeenCalled();
 });
 
+test("rejects duplicate receiver serials and UDP ports before startup", async () => {
+  const settings = [config("851", "PD"), config("851", "FD")];
+  const loadNoise = jest.fn(async () => ({ frameSize: 480 }));
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise,
+    }),
+  ).rejects.toThrow("Two channels need distinct SDR serials");
+  expect(loadNoise).not.toHaveBeenCalled();
+  settings[1] = { ...settings[1], SDR_SERIAL: "853", UDP_PORT: settings[0].UDP_PORT };
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise,
+    }),
+  ).rejects.toThrow("Two channels need distinct UDP ports");
+  expect(loadNoise).not.toHaveBeenCalled();
+});
+
 test("releases secrets when a UDP listener fails to bind", async () => {
   const settings = [config("851", "PD"), config("853", "FD")];
   const inputClose = jest.fn();

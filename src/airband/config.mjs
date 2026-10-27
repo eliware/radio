@@ -1,10 +1,15 @@
-export function createAirbandConfig(channels) {
+export function validateAirbandChannels(channels) {
   if (channels.length !== 2 || channels[0].SDR_SERIAL === channels[1].SDR_SERIAL) {
     throw new Error("Two channels need distinct SDR serials");
   }
   if (channels[0].UDP_PORT === channels[1].UDP_PORT) {
     throw new Error("Two channels need distinct UDP ports");
   }
+  return channels;
+}
+
+export function createAirbandConfig(channels) {
+  validateAirbandChannels(channels);
   const devices = channels.map((channel) => {
     const frequency = Number(channel.FREQUENCY_MHZ).toFixed(4);
     const tone = Number(channel.CTCSS_HZ).toFixed(1);
