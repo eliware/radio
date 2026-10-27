@@ -27,8 +27,9 @@ test tone. This confirms that the channel can receive audio from the bridge.
 
 Direct USB access uses `/dev/bus/usb`. The Compose file passes that device tree into the container.
 The app does not provide a web audio player or Icecast server. Listen through the configured Zello
-channels. Optional Broadcastify Classic outputs can publish the post-RNNoise 90/10 processed audio.
-They remain disabled until Broadcastify approves the account and provides technical connection values.
+channels. Optional Broadcastify Classic outputs can publish the same post-RNNoise audio sent to
+Zello, using the configured `RNNOISE` percentage. They remain disabled until Broadcastify approves the
+account and provides technical connection values.
 
 ## Setup
 
@@ -91,14 +92,18 @@ The table lists the app's validation rules.
 | `BROADCASTIFY_NAME`     | No         | Optional stream title. Defaults to `CHANNEL`.                     |
 | `PUBLIC_KEY`            | No         | Reference value only. The app does not read it.                   |
 
-`RNNOISE=100` sends fully noise-reduced audio. `RNNOISE=80` combines 80% noise-reduced audio with
-20% unprocessed audio. Lower values preserve more receiver noise along with the voice.
+`RNNOISE` must be an integer from 0 through 100. `RNNOISE=100` sends fully noise-reduced audio.
+`RNNOISE=80` combines 80% noise-reduced audio with 20% unprocessed audio. `RNNOISE=0` sends the
+unprocessed signal. Lower values preserve more receiver noise along with the voice.
 
-Each enabled Broadcastify output receives the same post-RNNoise processed audio that is encoded for Zello. A
-separate FFmpeg process for each channel converts 48 kHz mono PCM to a 22.05 kHz, 16 kbps mono MP3
-source stream. Node keeps the source stream continuous by writing quiet audio between transmissions.
-Police and Fire use separate Icecast connections. Keep Broadcastify disabled and replace the
-template values only after Broadcastify approves the account and its Technicals values are available.
+The template uses `RNNOISE=80`. The runtime default is 100 when this value is omitted.
+
+Each enabled Broadcastify output receives the same post-RNNoise processed audio that is encoded for
+Zello. A separate FFmpeg process for each channel converts 48 kHz mono PCM to a 22.05 kHz, 16 kbps
+mono MP3 source stream. Node keeps the source stream continuous by writing quiet audio between
+transmissions. Police and Fire use separate Icecast connections. Keep Broadcastify disabled and
+replace the template values only after Broadcastify approves the account and its Technicals values
+are available.
 
 Do not set `TOKEN`. The app rejects it and signs production JWTs from `ISSUER` and `PRIVATE_KEY`.
 The `PUBLIC_KEY` entry in the template is for reference and is not needed at runtime.
@@ -126,12 +131,32 @@ The two HTTP routes return JSON:
 
 - `GET /health` returns HTTP 200 while the Node.js status server responds.
 - `GET /ready` returns HTTP 200 only when RTLSDR-Airband is running, both Zello sessions are
-  online, and each enabled Broadcastify FFmpeg process is running. It returns HTTP 503 during
-  startup or recovery.
+  online, both initial startup tones have completed, and each enabled Broadcastify FFmpeg process
+  is running. It returns HTTP 503 during startup or recovery.
 - Other paths return HTTP 404.
 
-Both status responses include the receiver state and each channel's connection state. Docker's
-health check uses `/ready` and allows a 30-second startup period.
+Both status responses are JSON and include the receiver state and each channel's connection state.
+The response includes Broadcastify state for each channel. Disabled outputs report `disabled`.
+For example, a startup response can look like this:
+
+```json
+{
+  "status": "not-ready",
+  "receiver": { "state": "waiting-for-sdrs" },
+  "channels": {
+    "Police": { "state": "online" },
+    "Fire": { "state": "connecting" }
+  },
+  "broadcastify": {
+    "Police": { "state": "disabled" },
+    "Fire": { "state": "disabled" }
+  }
+}
+```
+
+The channel names are taken from each `CHANNEL` value. Error details may also appear in component
+status. Docker's health check uses `/ready`, checks every 15 seconds, and allows a 30-second startup
+period before counting failures.
 
 ## Operations
 
@@ -154,8 +179,9 @@ does not apply changed Compose environment values. Logs use timestamped JSON for
 RTLSDR-Airband writes its own text messages to the same container log.
 
 To use a non-default channel-file directory, set `RADIO_CONFIG_DIR`. It must contain `police.env` and
-`fire.env`. The status listener uses `RADIO_HEALTH_PORT`, which defaults to `1400`. If changing it,
-also update the published host mapping and health-check URL in `compose.yaml`.
+`fire.env`, in that order. The status listener binds to all container interfaces and uses
+`RADIO_HEALTH_PORT`, which defaults to `1400`. Compose publishes it on host loopback only. If
+changing the port, also update the published host mapping and health-check URL in `compose.yaml`.
 
 ## Troubleshooting
 
