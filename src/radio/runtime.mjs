@@ -1,5 +1,6 @@
 import { chmod, writeFile } from "node:fs/promises";
-import { errorDetails, rememberSecrets } from "../logging/error-details.mjs";
+import { errorDetails } from "../logging/error-details.mjs";
+import { rememberSecrets } from "../logging/secrets.mjs";
 import { logger } from "../logger.mjs";
 import { getRuntimePaths } from "../runtime-paths.mjs";
 import { createAirbandSupervisor } from "../airband-supervisor.mjs";

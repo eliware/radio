@@ -1,4 +1,5 @@
-import { knownSecrets, redactErrorText } from "../logging/error-details.mjs";
+import { knownSecrets } from "../logging/secrets.mjs";
+import { redactErrorText } from "../logging/error-details.mjs";
 import { redactBroadcastifyText } from "./redaction.mjs";
 
 export function sanitizeBroadcastifyStderr(stderr, settings) {

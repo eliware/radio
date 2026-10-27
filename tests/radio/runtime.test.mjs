@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { getRuntimePaths } from "../../src/runtime-paths.mjs";
-import { knownSecrets } from "../../src/logging/error-details.mjs";
+import { knownSecrets } from "../../src/logging/secrets.mjs";
 import { createRadioRuntime } from "../../src/radio/runtime.mjs";
 
 const config = (serial, channel) => ({

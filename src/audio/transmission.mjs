@@ -1,6 +1,6 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
 import { createAudioStreamRecovery } from "./stream-recovery.mjs";
-import { createAudioIdleTimer } from "./idle-timer.mjs";
+import { createTransmissionIdle } from "./transmission-idle.mjs";
 
 const INPUT_FRAME_BYTES = 320 * 4;
 
@@ -37,13 +37,15 @@ export function createAudioTransmission({
     starting;
   let closed = false;
   const recovery = createAudioStreamRecovery({ session, onError, now });
-  const idle = createAudioIdleTimer({
+  const idle = createTransmissionIdle({
     idleMs,
     now,
     setTimeoutImpl,
     clearTimeoutImpl,
-    onIdle: () => end().catch(onError),
+    end,
+    onError,
   });
+
   function flush() {
     if (!session.healthy()) {
       if (streamId) recovery.abandon(streamId);
@@ -75,9 +77,7 @@ export function createAudioTransmission({
   }
 
   function stopAbandonedStreams() {
-    return recovery.stopAbandoned(() => {
-      if (!closed) begin();
-    });
+    return recovery.stopAbandoned(() => !closed && begin());
   }
 
   function begin() {
