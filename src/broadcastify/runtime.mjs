@@ -6,9 +6,14 @@ export function createBroadcastifyRuntime(
   createStream = createBroadcastifyStream,
   onError = () => {},
 ) {
-  const outputs = configs.map((config) =>
-    createStream(getBroadcastifySettings(config), { onError }),
-  );
+  const outputs = [];
+  try {
+    for (const config of configs)
+      outputs.push(createStream(getBroadcastifySettings(config), { onError }));
+  } catch (error) {
+    outputs.forEach((output) => Promise.resolve(output.close()).catch(onError));
+    throw error;
+  }
   return {
     outputs,
     ready: () => outputs.every((output) => output.ready()),

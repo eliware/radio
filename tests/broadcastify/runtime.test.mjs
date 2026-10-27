@@ -34,3 +34,20 @@ test("provides a default error handler to output factories", () => {
   );
   expect(runtime.ready()).toBe(true);
 });
+
+test("closes streams already created when a later factory throws", async () => {
+  const close = jest.fn(async () => {});
+  let calls = 0;
+  expect(() =>
+    createBroadcastifyRuntime(
+      [{ BROADCASTIFY_ENABLED: "false" }, { BROADCASTIFY_ENABLED: "false" }],
+      () => {
+        calls += 1;
+        if (calls === 2) throw new Error("factory failed");
+        return { close, ready: () => true, status: () => ({}) };
+      },
+    ),
+  ).toThrow("factory failed");
+  await Promise.resolve();
+  expect(close).toHaveBeenCalledTimes(1);
+});

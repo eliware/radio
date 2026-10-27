@@ -36,20 +36,31 @@ export async function createRadioRuntime({
   log = logger,
 }) {
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
-  rememberSecrets(configs);
   const rnnoise = await loadNoise();
   const reportError =
     onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
   await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
   await chmodConfig(airbandPath, 0o600);
-  const broadcastify = createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
-  const broadcasts = broadcastify.outputs;
-  const channels = createRadioChannels(configs, makeSession);
-  const inputs = createRadioInputs(channels, broadcasts, rnnoise, makeInput, reportError);
-  const listening = await Promise.allSettled(inputs.map((input) => input.listen()));
+  const releaseSecrets = rememberSecrets(configs);
+  let broadcastify;
+  let inputs = [];
+  let channels;
+  try {
+    broadcastify = createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
+    channels = createRadioChannels(configs, makeSession);
+    inputs = createRadioInputs(channels, broadcastify.outputs, rnnoise, makeInput, reportError);
+  } catch (error) {
+    await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
+    releaseSecrets();
+    throw error;
+  }
+  const listening = await Promise.allSettled(
+    inputs.map((input) => Promise.resolve().then(() => input.listen())),
+  );
   const listenFailure = listening.find(({ status }) => status === "rejected");
   if (listenFailure) {
     await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
+    releaseSecrets();
     throw listenFailure.reason;
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
@@ -68,10 +79,17 @@ export async function createRadioRuntime({
     });
   } catch (error) {
     await closeRadioResources({ inputs, broadcastify, sessions }, { ignoreErrors: true });
+    releaseSecrets();
     throw error;
   }
   return {
-    close: () => closeRadioResources({ inputs, broadcastify, sessions, airband }),
+    close: async () => {
+      try {
+        await closeRadioResources({ inputs, broadcastify, sessions, airband });
+      } finally {
+        releaseSecrets();
+      }
+    },
     ready: () => airband.ready() && sessions.ready() && broadcastify.ready(),
     status: () => ({
       receiver: airband.status(),

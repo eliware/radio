@@ -251,3 +251,21 @@ test("stops before retrying when an error callback shuts down the supervisor", a
   await stopped;
   expect(failed.status().state).toBe("stopped");
 });
+
+test("settles shutdown if a child never emits its spawn event", async () => {
+  let child;
+  const supervisor = createAirbandSupervisor({
+    configs: [{ SDR_SERIAL: "851" }],
+    configPath: "/tmp/airband.conf",
+    wait: async () => {},
+    onError: () => {},
+    log: quietLog,
+    present: async () => true,
+    spawnProcess: () => (child = new EventEmitter()),
+  });
+  for (let attempt = 0; attempt < 20 && !child; attempt += 1) await Promise.resolve();
+  child.kill = jest.fn();
+  await supervisor.close();
+  expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+  expect(supervisor.status().state).toBe("stopped");
+});

@@ -17,6 +17,7 @@ export function createAirbandSupervisor({
   let child;
   let state = "waiting-for-sdrs";
   let error;
+  let finishStartingChild;
   let resolveStop;
   const stopSignal = new Promise((resolve) => {
     resolveStop = resolve;
@@ -48,15 +49,21 @@ export function createAirbandSupervisor({
         });
         const result = await new Promise((resolve) => {
           const process = child;
+          let spawned = false;
           const finish = (result) => {
+            finishStartingChild = undefined;
             process.off("spawn", onSpawn);
             process.off("error", onProcessError);
             process.off("close", onClose);
             resolve(result);
           };
           const onSpawn = () => {
+            spawned = true;
             state = "running";
             log.info("RTLSDR-Airband started");
+          };
+          finishStartingChild = () => {
+            if (!spawned) finish({ signal: "SIGTERM" });
           };
           const onProcessError = (cause) => {
             state = "error";
@@ -94,6 +101,7 @@ export function createAirbandSupervisor({
       stopped = true;
       resolveStop();
       state = "stopped";
+      finishStartingChild?.();
       child?.kill("SIGTERM");
       await task;
     },

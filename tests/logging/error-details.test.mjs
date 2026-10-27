@@ -28,3 +28,11 @@ test("ignores empty credentials and preserves ordinary text", () => {
     message: "ordinary error",
   });
 });
+
+test("releases remembered secrets when a runtime ends", () => {
+  const release = rememberSecrets([{ PASSWORD: "temporary-secret" }]);
+  expect(errorDetails("temporary-secret").message).toBe("[REDACTED]");
+  release();
+  release();
+  expect(errorDetails("temporary-secret").message).toBe("temporary-secret");
+});

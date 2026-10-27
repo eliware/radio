@@ -84,3 +84,27 @@ test("rejects incomplete channel configuration before starting services", async 
   ).rejects.toThrow("missing config");
   expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
 });
+
+test("closes Broadcastify streams and releases credentials if input creation throws", async () => {
+  const closeBroadcast = jest.fn(async () => {});
+  const settings = [config("851", "PD"), config("853", "FD")];
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {},
+      chmodConfig: async () => {},
+      makeBroadcastify: () => ({
+        write: () => {},
+        ready: () => true,
+        status: () => ({ state: "running" }),
+        close: closeBroadcast,
+      }),
+      makeInput: () => {
+        throw new Error("input construction failed");
+      },
+    }),
+  ).rejects.toThrow("input construction failed");
+  expect(closeBroadcast).toHaveBeenCalledTimes(2);
+});
