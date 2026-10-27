@@ -1,133 +1,62 @@
-import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
 import { createAudioInput } from "../../src/audio/input.mjs";
 
-const rnnoise = {
-  frameSize: 480,
-  createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
-};
-
-class FakeSocket extends EventEmitter {
-  bind(port, _host, callback) {
-    this.port = port || 12001;
-    this.bound = true;
-    callback();
-  }
-  address() {
-    return { port: this.port };
-  }
-  close() {
-    if (!this.bound) {
-      const error = new Error("ERR_SOCKET_DGRAM_NOT_RUNNING");
-      error.code = "ERR_SOCKET_DGRAM_NOT_RUNNING";
-      throw error;
-    }
-    this.closed = true;
-  }
-}
-
-test("binds UDP input and forwards packet and error events", async () => {
-  const socket = new FakeSocket();
-  const receive = jest.fn();
-  const closeTransmission = jest.fn();
+test("connects UDP input to the transmission and closes both resources", async () => {
+  const events = [];
+  const transmission = {
+    receive: jest.fn((packet) => events.push(packet)),
+    close: jest.fn(async () => events.push("transmission closed")),
+  };
+  const udpInput = {
+    listen: jest.fn(async () => 12001),
+    close: jest.fn(async () => events.push("UDP input closed")),
+  };
   const onError = jest.fn();
+  let udpOptions;
   const input = createAudioInput({
     port: 12001,
     session: {},
-    rnnoise,
     onError,
-    createSocketImpl: () => socket,
-    createTransmissionImpl: () => ({ receive, close: closeTransmission }),
+    createTransmissionImpl: jest.fn(() => transmission),
+    createUdpInputImpl: jest.fn((options) => {
+      udpOptions = options;
+      return udpInput;
+    }),
   });
 
+  expect(udpOptions).toMatchObject({ port: 12001, onError });
+  expect(udpOptions.onMessage).toBe(transmission.receive);
   await expect(input.listen()).resolves.toBe(12001);
-  const packet = Buffer.alloc(32);
-  socket.emit("message", packet);
-  socket.emit("error", new Error("socket failed"));
-  await input.close();
+  const packet = Buffer.alloc(16);
+  udpOptions.onMessage(packet);
+  expect(transmission.receive).toHaveBeenCalledWith(packet);
 
-  expect(receive).toHaveBeenCalledWith(packet);
-  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "socket failed" }));
-  expect(closeTransmission).toHaveBeenCalledTimes(1);
-  expect(socket.closed).toBe(true);
+  await input.close();
+  expect(events).toEqual([packet, "transmission closed", "UDP input closed"]);
 });
 
-test("opens the default loopback UDP input and closes an idle transmission", async () => {
+test("uses the default transmission, UDP input, and no-op error handler", async () => {
+  const rnnoise = {
+    frameSize: 480,
+    createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
+  };
   const input = createAudioInput({
     port: 0,
-    rnnoise,
     session: { healthy: () => false },
+    rnnoise,
+    createUdpInputImpl: (options) => {
+      expect(() => options.onError(new Error("ignored"))).not.toThrow();
+      return { listen: async () => 12001, close: async () => {} };
+    },
   });
-  expect(await input.listen()).toBeGreaterThan(0);
+  await expect(input.listen()).resolves.toBe(12001);
   await input.close();
-});
 
-test("uses the default socket error handler", async () => {
-  const socket = new FakeSocket();
-  const input = createAudioInput({
-    port: 12001,
-    session: {},
+  const defaultInput = createAudioInput({
+    port: 0,
+    session: { healthy: () => false },
     rnnoise,
-    createSocketImpl: () => socket,
-    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
   });
-  await input.listen();
-  socket.emit("error", new Error("handled by default"));
-  await input.close();
-});
-
-test("rejects UDP bind errors and reports them", async () => {
-  class FailedBindSocket extends FakeSocket {
-    bind() {
-      this.emit("error", new Error("bind failed"));
-    }
-  }
-  const onError = jest.fn();
-  const input = createAudioInput({
-    port: 12001,
-    session: {},
-    rnnoise,
-    onError,
-    createSocketImpl: () => new FailedBindSocket(),
-    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
-  });
-  await expect(input.listen()).rejects.toThrow("bind failed");
-  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "bind failed" }));
-  await expect(input.close()).resolves.toBeUndefined();
-});
-
-test("rejects synchronous UDP bind failures", async () => {
-  class ThrowingBindSocket extends FakeSocket {
-    bind() {
-      throw new Error("invalid bind");
-    }
-  }
-  const input = createAudioInput({
-    port: 12001,
-    session: {},
-    rnnoise,
-    createSocketImpl: () => new ThrowingBindSocket(),
-    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
-  });
-  await expect(input.listen()).rejects.toThrow("invalid bind");
-  await input.close();
-});
-
-test("propagates unexpected UDP close errors", async () => {
-  class FailedCloseSocket extends FakeSocket {
-    close() {
-      const error = new Error("close failed");
-      error.code = "EIO";
-      throw error;
-    }
-  }
-  const input = createAudioInput({
-    port: 12001,
-    session: {},
-    rnnoise,
-    createSocketImpl: () => new FailedCloseSocket(),
-    createTransmissionImpl: () => ({ receive: () => {}, close: async () => {} }),
-  });
-  await input.listen();
-  await expect(input.close()).rejects.toThrow("close failed");
+  expect(await defaultInput.listen()).toBeGreaterThan(0);
+  await defaultInput.close();
 });

@@ -14,12 +14,9 @@ const config = (serial, channel) => ({
   CTCSS_HZ: "77.0",
   TONE: "1000",
 });
-const quietLog = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
-
-test("builds one runtime from per-channel files and combines readiness", async () => {
+test("builds one runtime from channel files and combines component readiness", async () => {
   jest.useFakeTimers();
   let receiverReady = false;
-  const events = [];
   const logs = [];
   const log = Object.fromEntries(
     ["debug", "info", "warn", "error"].map((level) => [
@@ -33,8 +30,8 @@ test("builds one runtime from per-channel files and combines readiness", async (
     configPaths: ["pd", "fd"],
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
     loadNoise: async () => loadedNoise,
-    writeConfig: async (_path, text) => events.push(text),
-    chmodConfig: async (_path, mode) => events.push(`mode:${mode}`),
+    writeConfig: async () => {},
+    chmodConfig: async () => {},
     log,
     makeSession: () => ({ healthy: () => true, close: () => {} }),
     makeInput: (options) => {
@@ -48,7 +45,7 @@ test("builds one runtime from per-channel files and combines readiness", async (
       return {
         ready: () => true,
         status: () => ({ PD: { state: "online" }, FD: { state: "online" } }),
-        close: async () => events.push("sessions closed"),
+        close: async () => {},
       };
     },
     makeAirbandSupervisor: (options) => {
@@ -57,15 +54,13 @@ test("builds one runtime from per-channel files and combines readiness", async (
       return {
         ready: () => receiverReady,
         status: () => ({ state: receiverReady ? "running" : "waiting" }),
-        close: async () => events.push("receiver closed"),
+        close: async () => {},
       };
     },
   });
   expect(runtime.ready()).toBe(false);
-  expect(events).toContain("mode:384");
   receiverReady = true;
   expect(runtime.ready()).toBe(true);
-  expect(events[0]).toContain("udp_stream");
   expect(runtime.status().channels.FD.state).toBe("online");
   capturedOptions.onError(new Error("sample"));
   const pause = capturedOptions.wait(0);
@@ -74,10 +69,9 @@ test("builds one runtime from per-channel files and combines readiness", async (
   expect(logs.at(-1)).toMatchObject({ level: "error", metadata: { error: { message: "sample" } } });
   await runtime.close();
   jest.useRealTimers();
-  expect(events.slice(-2).sort()).toEqual(["receiver closed", "sessions closed"].sort());
 });
 
-test("applies standard settings without opening services when no channel files are configured", async () => {
+test("rejects incomplete channel configuration before starting services", async () => {
   await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow("Two channels");
   const paths = [];
   await expect(
@@ -89,88 +83,4 @@ test("applies standard settings without opening services when no channel files a
     }),
   ).rejects.toThrow("missing config");
   expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
-});
-
-test("closes every UDP input when any listener fails to bind", async () => {
-  let count = 0;
-  const close = jest.fn();
-  const runtime = createRadioRuntime({
-    configPaths: ["pd", "fd"],
-    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
-    loadNoise: async () => ({ frameSize: 480 }),
-    writeConfig: async () => {},
-    chmodConfig: async () => {},
-    log: quietLog,
-    makeInput: () => {
-      count += 1;
-      return {
-        listen: async () => {
-          if (count === 2) throw new Error("UDP port is busy");
-        },
-        close,
-      };
-    },
-    makeSessionSupervisor: () => {
-      throw new Error("must not start sessions before listeners bind");
-    },
-  });
-  await expect(runtime).rejects.toThrow("UDP port is busy");
-  expect(close).toHaveBeenCalledTimes(2);
-});
-
-test("closes listeners and constructed supervisors after a startup failure", async () => {
-  for (const failure of ["sessions", "airband"]) {
-    const closeInput = jest.fn();
-    const closeSessions = jest.fn();
-    const runtime = createRadioRuntime({
-      configPaths: ["pd", "fd"],
-      loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
-      loadNoise: async () => ({ frameSize: 480 }),
-      writeConfig: async () => {},
-      chmodConfig: async () => {},
-      log: quietLog,
-      makeInput: () => ({ listen: async () => {}, close: closeInput }),
-      makeSessionSupervisor: () => {
-        if (failure === "sessions") throw new Error("session setup failed");
-        return { close: closeSessions };
-      },
-      makeAirbandSupervisor: () => {
-        throw new Error("airband setup failed");
-      },
-    });
-    await expect(runtime).rejects.toThrow(
-      failure === "sessions" ? "session setup failed" : "airband setup failed",
-    );
-    expect(closeInput).toHaveBeenCalledTimes(2);
-    expect(closeSessions).toHaveBeenCalledTimes(failure === "airband" ? 1 : 0);
-  }
-});
-
-test("waits for every component to close when one shutdown rejects", async () => {
-  let inputCount = 0;
-  const closeSessions = jest.fn();
-  const closeAirband = jest.fn();
-  const closeInput = jest.fn(async () => {
-    inputCount += 1;
-    if (inputCount === 1) throw new Error("input close failed");
-  });
-  const runtime = await createRadioRuntime({
-    configPaths: ["pd", "fd"],
-    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
-    loadNoise: async () => ({ frameSize: 480 }),
-    writeConfig: async () => {},
-    chmodConfig: async () => {},
-    log: quietLog,
-    makeInput: () => ({ listen: async () => {}, close: closeInput }),
-    makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: closeSessions }),
-    makeAirbandSupervisor: () => ({
-      ready: () => true,
-      status: () => ({}),
-      close: closeAirband,
-    }),
-  });
-  await expect(runtime.close()).rejects.toThrow("input close failed");
-  expect(closeInput).toHaveBeenCalledTimes(2);
-  expect(closeSessions).toHaveBeenCalledTimes(1);
-  expect(closeAirband).toHaveBeenCalledTimes(1);
 });

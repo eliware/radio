@@ -12,6 +12,7 @@ import { createZelloSession } from "../zello/session.mjs";
 import { createBroadcastifyStream } from "../broadcastify/stream.mjs";
 import { createBroadcastifyRuntime } from "../broadcastify/runtime.mjs";
 import { createRadioChannels, createRadioInputs } from "./channels.mjs";
+import { closeRadioResources } from "./resources.mjs";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
@@ -48,7 +49,7 @@ export async function createRadioRuntime({
   const listening = await Promise.allSettled(inputs.map((input) => input.listen()));
   const listenFailure = listening.find(({ status }) => status === "rejected");
   if (listenFailure) {
-    await Promise.allSettled([...inputs.map((input) => input.close()), broadcastify.close()]);
+    await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
     throw listenFailure.reason;
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
@@ -66,24 +67,11 @@ export async function createRadioRuntime({
       ...(spawnProcess && { spawnProcess }),
     });
   } catch (error) {
-    await Promise.allSettled([
-      ...inputs.map((input) => input.close()),
-      broadcastify.close(),
-      ...(sessions ? [sessions.close()] : []),
-    ]);
+    await closeRadioResources({ inputs, broadcastify, sessions }, { ignoreErrors: true });
     throw error;
   }
   return {
-    close: async () => {
-      const closing = await Promise.allSettled([
-        ...inputs.map((input) => Promise.resolve().then(() => input.close())),
-        Promise.resolve().then(() => broadcastify.close()),
-        Promise.resolve().then(() => sessions.close()),
-        Promise.resolve().then(() => airband.close()),
-      ]);
-      const failure = closing.find(({ status }) => status === "rejected");
-      if (failure) throw failure.reason;
-    },
+    close: () => closeRadioResources({ inputs, broadcastify, sessions, airband }),
     ready: () => airband.ready() && sessions.ready() && broadcastify.ready(),
     status: () => ({
       receiver: airband.status(),

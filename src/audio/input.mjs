@@ -1,5 +1,5 @@
-import { createSocket } from "node:dgram";
 import { createAudioTransmission } from "./transmission.mjs";
+import { createUdpInput } from "./udp-input.mjs";
 
 export function createAudioInput({
   port,
@@ -9,14 +9,13 @@ export function createAudioInput({
   onProcessedPcm,
   createProcessor,
   createTransmissionImpl = createAudioTransmission,
+  createUdpInputImpl = createUdpInput,
   idleMs = 500,
   onError = () => {},
-  createSocketImpl = createSocket,
   now = Date.now,
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
 }) {
-  const socket = createSocketImpl("udp4");
   const transmission = createTransmissionImpl({
     session,
     rnnoise,
@@ -29,34 +28,14 @@ export function createAudioInput({
     setTimeoutImpl,
     clearTimeoutImpl,
   });
-  let listening = false;
-  socket.on("message", transmission.receive);
-  socket.on("error", onError);
-  const listen = () =>
-    new Promise((resolve, reject) => {
-      const failed = (error) => {
-        socket.off("error", failed);
-        reject(error);
-      };
-      socket.once("error", failed);
-      try {
-        socket.bind(port, "127.0.0.1", () => {
-          socket.off("error", failed);
-          listening = true;
-          resolve(socket.address().port);
-        });
-      } catch (error) {
-        failed(error);
-      }
-    });
+  const input = createUdpInputImpl({
+    port,
+    onMessage: transmission.receive,
+    onError,
+  });
   const close = async () => {
     await transmission.close();
-    try {
-      socket.close();
-    } catch (error) {
-      if (listening || error.code !== "ERR_SOCKET_DGRAM_NOT_RUNNING") throw error;
-    }
-    listening = false;
+    await input.close();
   };
-  return { close, listen };
+  return { close, listen: input.listen };
 }
