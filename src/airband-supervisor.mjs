@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { logger as defaultLogger } from "./logger.mjs";
-import { hasUsbSerial } from "./usb-device.mjs";
+import { hasUsbSerial } from "./usb/device.mjs";
 import { waitForAirbandDevices } from "./airband/device-monitor.mjs";
 
 export function createAirbandSupervisor({

@@ -1,4 +1,4 @@
-import { createStatusServer } from "../src/status-server.mjs";
+import { createStatusServer } from "../../src/status/server.mjs";
 
 async function fetchStatus(ready, fetchImpl = fetch) {
   const log = { debug: () => {} };

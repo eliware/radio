@@ -1,10 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
-
-export async function hasUsbSerial(
-  serial,
-  root = "/sys/bus/usb/devices",
-  filesystem = { readdir, readFile },
-) {
+export async function hasAuthorizedUsbSerial(serial, root, filesystem) {
   let devices;
   try {
     devices = await filesystem.readdir(root);
