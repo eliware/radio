@@ -43,8 +43,7 @@ changes. Find operating details in [the guide](docs/README.md) and repository ru
 
 ## Development
 
-Read [AGENTS.md](AGENTS.md) before changing source files. Implementation lives in `src/`, launchers
-in `bin/`, and tests in `tests/`.
+See [contributor instructions](AGENTS.md) before making changes.
 
 ## Testing
 

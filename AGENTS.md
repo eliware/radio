@@ -20,8 +20,8 @@ Use Node.js 26 or later, npm, and native ESM.
 
 ## Validation
 
-Run `npm ci` and `npm test` for aggregate validation. Run `npm run lint`, `npm run audit`,
-`npm run format`, and `npm run format:check` as focused checks.
+Run `npm test` for aggregate validation. Run `npm run lint`, `npm run audit`, `npm run format`, and
+`npm run format:check` as focused checks.
 
 ## Security
 
