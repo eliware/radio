@@ -129,6 +129,26 @@ test("reports RNNoise state recreation failures", () => {
   denoiser.close();
 });
 
+test("reports state destruction failures while completing close", () => {
+  const errors = [];
+  const denoiser = createAudioDenoiser({
+    rnnoise: {
+      frameSize: 2,
+      createDenoiseState: () => ({
+        processFrame: () => {},
+        destroy: () => {
+          throw new Error("destroy failed");
+        },
+      }),
+    },
+    onPcm: () => {},
+    onError: (error) => errors.push(error.message),
+  });
+  expect(() => denoiser.close()).toThrow("destroy failed");
+  expect(errors).toEqual(["destroy failed"]);
+  expect(() => denoiser.write(Buffer.alloc(4))).toThrow("closed");
+});
+
 test("drops buffered frames and rebuilds RNNoise state after a processing error", () => {
   const errors = [];
   const output = [];

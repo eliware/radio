@@ -101,6 +101,30 @@ test("closes on socket errors when terminate is unavailable", async () => {
   expect(socket.close).toHaveBeenCalledTimes(1);
 });
 
+test("does not close an already closed socket again after an error", async () => {
+  let socket;
+  class CloseOnlySocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = CloseOnlySocket.CLOSED;
+    close = jest.fn(() => {
+      this.emit("error", new Error("recursive error"));
+    });
+
+    constructor(url) {
+      super();
+      this.url = url;
+      socket = this;
+    }
+  }
+  const onError = jest.fn();
+  const connection = createZelloConnection(CloseOnlySocket, { onError });
+  connection.opening.catch(() => {});
+  socket.emit("error", new Error("socket error"));
+  expect(socket.close).not.toHaveBeenCalled();
+  expect(onError).toHaveBeenCalledTimes(1);
+});
+
 test("uses optional lifecycle callbacks when they are omitted", async () => {
   let socket;
   class TestSocket extends FakeSocket {

@@ -29,9 +29,12 @@ export function createZelloConnection(
   });
   const closed = new Promise((resolve) => socket.once("close", resolve));
 
+  let closingAfterError = false;
   socket.on("close", onClose);
   socket.on("error", (error) => {
     onError(error);
+    if (closingAfterError || socket.readyState === WebSocketImpl.CLOSED) return;
+    closingAfterError = true;
     if (typeof socket.terminate === "function") socket.terminate();
     else socket.close();
   });

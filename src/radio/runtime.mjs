@@ -18,12 +18,17 @@ import { closeRadioResources } from "./resources.mjs";
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
 
-function releaseSecretsAndRedact(releaseSecrets, error) {
+function redactError(error) {
   const details = errorDetails(error);
-  releaseSecrets();
   const safeError = new Error(details.message);
   safeError.name = details.name;
   safeError.stack = details.stack;
+  return safeError;
+}
+
+function releaseSecretsAndRedact(releaseSecrets, error) {
+  const safeError = redactError(error);
+  releaseSecrets();
   return safeError;
 }
 
@@ -77,8 +82,13 @@ export async function createRadioRuntime({
   );
   const listenFailure = listening.find(({ status }) => status === "rejected");
   if (listenFailure) {
-    await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
-    throw releaseSecretsAndRedact(releaseSecrets, listenFailure.reason);
+    const safeError = redactError(listenFailure.reason);
+    try {
+      await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
+    } finally {
+      releaseSecrets();
+    }
+    throw safeError;
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
   let sessions;

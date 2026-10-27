@@ -108,6 +108,17 @@ are available.
 Do not set `TOKEN`. The app rejects it and signs production JWTs from `ISSUER` and `PRIVATE_KEY`.
 The `PUBLIC_KEY` entry in the template is for reference and is not needed at runtime.
 
+## Runtime settings
+
+These environment variables configure the application process or its HTTP status endpoint. They
+are separate from the per-channel settings above.
+
+| Variable            | Required | Meaning and default                                                                        |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `RADIO_CONFIG_DIR`  | No       | Directory containing `police.env` and `fire.env`. Defaults to the app's runtime directory. |
+| `RADIO_HEALTH_PORT` | No       | HTTP status port. Defaults to `1400`.                                                      |
+| `LOG_LEVEL`         | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.                    |
+
 ## Startup and recovery
 
 Node.js starts as the container's PID 1 process. It validates both channel files before opening

@@ -3,26 +3,40 @@ import { createEncoder, encodePcmFrame } from "./encoder.mjs";
 
 export function createAudioPacketizer({ onPacket, createEncoderImpl = createEncoder }) {
   const encoder = createEncoderImpl();
-  let pcm = Buffer.alloc(0);
+  const frameBytes = FRAME_BYTES / 2;
+  const pending = Buffer.alloc(frameBytes);
+  let pendingBytes = 0;
   let closed = false;
 
   return {
     write(chunk) {
       if (closed) throw new Error("Audio packetizer is closed");
-      pcm = Buffer.concat([pcm, chunk]);
-      while (pcm.length >= FRAME_BYTES / 2) {
-        const frame = pcm.subarray(0, FRAME_BYTES / 2);
-        pcm = pcm.subarray(FRAME_BYTES / 2);
-        onPacket(encodePcmFrame(encoder, frame));
+      let offset = 0;
+      if (pendingBytes > 0) {
+        const copied = Math.min(frameBytes - pendingBytes, chunk.length);
+        chunk.copy(pending, pendingBytes, 0, copied);
+        pendingBytes += copied;
+        offset += copied;
+        if (pendingBytes === frameBytes) {
+          onPacket(encodePcmFrame(encoder, pending));
+          pendingBytes = 0;
+        }
+      }
+      while (offset + frameBytes <= chunk.length) {
+        onPacket(encodePcmFrame(encoder, chunk.subarray(offset, offset + frameBytes)));
+        offset += frameBytes;
+      }
+      if (offset < chunk.length) {
+        pendingBytes = chunk.copy(pending, 0, offset);
       }
     },
     reset() {
-      if (!closed) pcm = Buffer.alloc(0);
+      if (!closed) pendingBytes = 0;
     },
     close() {
       if (closed) return;
       closed = true;
-      pcm = Buffer.alloc(0);
+      pendingBytes = 0;
       encoder.delete();
     },
   };

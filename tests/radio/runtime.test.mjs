@@ -146,6 +146,33 @@ test("releases secrets when a UDP listener fails to bind", async () => {
   expect(knownSecrets).not.toContain(settings[0].PASSWORD);
 });
 
+test("closes resources and releases secrets if supervisor startup fails", async () => {
+  const settings = [config("851", "PD"), config("853", "FD")];
+  const closeInput = jest.fn();
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {},
+      chmodConfig: async () => {},
+      log: { info: () => {} },
+      makeInput: () => ({ listen: async () => {}, close: closeInput }),
+      makeBroadcastify: () => ({
+        write: () => {},
+        ready: () => true,
+        status: () => ({ state: "disabled" }),
+        close: async () => {},
+      }),
+      makeSessionSupervisor: () => {
+        throw new Error("supervisor startup failed");
+      },
+    }),
+  ).rejects.toThrow("supervisor startup failed");
+  expect(closeInput).toHaveBeenCalledTimes(2);
+  expect(knownSecrets).not.toContain(settings[0].PASSWORD);
+});
+
 test("closes Broadcastify streams and releases credentials if input creation throws", async () => {
   const closeBroadcast = jest.fn(async () => {});
   const settings = [config("851", "PD"), config("853", "FD")];

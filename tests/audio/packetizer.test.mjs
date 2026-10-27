@@ -18,6 +18,7 @@ test("buffers PCM and emits one encoded packet per complete Opus frame", () => {
   const pcm = Buffer.alloc(FRAME_BYTES / 2 + 4, 7);
   packetizer.write(pcm.subarray(0, 100));
   expect(packets).toHaveLength(0);
+  packetizer.write(Buffer.alloc(0));
   packetizer.write(pcm.subarray(100));
   expect(harness.encode).toHaveBeenCalledTimes(1);
   expect(harness.encode.mock.calls[0][0]).toHaveLength(FRAME_BYTES / 2);

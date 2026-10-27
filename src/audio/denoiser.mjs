@@ -60,7 +60,12 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
     close() {
       if (closed) return;
       closed = true;
-      state.destroy();
+      try {
+        state.destroy();
+      } catch (error) {
+        onError(error);
+        throw error;
+      }
     },
   };
 }
