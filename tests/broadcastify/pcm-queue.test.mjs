@@ -4,6 +4,8 @@ import { createPcmQueue } from "../../src/broadcastify/pcm-queue.mjs";
 test("returns silence when empty and drains queued PCM in order", () => {
   const queue = createPcmQueue(jest.fn());
   expect(queue.next()).toEqual(Buffer.alloc(960));
+  for (let count = 0; count < 1000; count += 1) queue.write(Buffer.alloc(0));
+  expect(queue.next()).toEqual(Buffer.alloc(960));
   queue.write(Buffer.from([1]));
   expect(queue.next()).toEqual(Buffer.alloc(960));
   const first = Buffer.alloc(960, 1);

@@ -48,11 +48,11 @@ export function createBroadcastifyStream(settings, options = {}) {
     write,
     ready: supervisor.ready,
     status: supervisor.status,
-    close: () => {
+    close: async () => {
       closed = true;
       if (keepalive) clearIntervalImpl(keepalive);
       queue.clear();
-      supervisor.close();
+      await supervisor.close();
     },
   };
 }

@@ -25,6 +25,8 @@ test("validates channel credentials and normalizes the UDP port", () => {
 test.each([
   "TOKEN=sample\n",
   "SDR_SERIAL=bad;include\n",
+  'SDR_SERIAL=851"; gain = 0; #\n',
+  "SDR_SERIAL=851\\; gain = 0; #\n",
   "CTCSS_HZ=999\n",
   "CTCSS_HZ=66\n",
   "FREQUENCY_MHZ=23\n",

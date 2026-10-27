@@ -10,7 +10,7 @@ function childProcess() {
     write: jest.fn(),
     end: jest.fn(),
   });
-  child.kill = jest.fn();
+  child.kill = jest.fn(() => child.emit("close", null, "SIGTERM"));
   return child;
 }
 

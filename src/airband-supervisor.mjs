@@ -68,11 +68,10 @@ export function createAirbandSupervisor({
           const onProcessError = (cause) => {
             state = "error";
             error = cause.message;
-            finish({ cause });
             process.kill?.("SIGTERM");
           };
           const onClose = (code, signal) => {
-            finish({ code, signal });
+            finish({ code, signal, ...(error && { cause: new Error(error) }) });
           };
           child.once("spawn", onSpawn);
           child.once("error", onProcessError);

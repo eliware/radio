@@ -6,11 +6,11 @@ function childProcess() {
   const child = new EventEmitter();
   child.stdin = Object.assign(new EventEmitter(), { end: jest.fn() });
   child.stderr = new EventEmitter();
-  child.kill = jest.fn();
+  child.kill = jest.fn(() => child.emit("close", null, "SIGTERM"));
   return child;
 }
 
-test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanly", () => {
+test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanly", async () => {
   const children = [childProcess(), childProcess()];
   const timers = [];
   const cleared = [];
@@ -45,7 +45,7 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   const retry = timers.find((timer) => timer.ms === 1000);
   retry.callback();
   const second = spawnProcess.mock.results[1].value;
-  supervisor.close();
+  await supervisor.close();
   expect(second.stdin.end).toHaveBeenCalled();
   expect(second.kill).toHaveBeenCalledWith("SIGTERM");
   expect(supervisor.status()).toEqual({ state: "closed" });
@@ -54,7 +54,7 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   second.emit("close", 1);
 });
 
-test("reports process errors once and retries after the current child closes", () => {
+test("reports process errors once and retries after the current child closes", async () => {
   const children = [childProcess(), childProcess()];
   const timers = [];
   const onError = jest.fn();
@@ -77,10 +77,10 @@ test("reports process errors once and retries after the current child closes", (
   expect(onError).toHaveBeenCalledTimes(1);
   timers.find((timer) => timer.ms === 1000).callback();
   expect(supervisor.child).toBeDefined();
-  supervisor.close();
+  await supervisor.close();
 });
 
-test("reports signal exits when FFmpeg has no stderr output", () => {
+test("reports signal exits when FFmpeg has no stderr output", async () => {
   const child = childProcess();
   const onError = jest.fn();
   const supervisor = createBroadcastifySupervisor(
@@ -89,10 +89,32 @@ test("reports signal exits when FFmpeg has no stderr output", () => {
   );
   child.emit("close", null, "SIGKILL");
   expect(onError).toHaveBeenCalledWith(new Error("Broadcastify FFmpeg exited (SIGKILL)"));
-  supervisor.close();
+  await supervisor.close();
 });
 
-test("recovers from synchronous spawn failure and accepts a disabled configuration", () => {
+test("waits for FFmpeg shutdown and force kills it after the grace period", async () => {
+  const child = childProcess();
+  child.kill = jest.fn();
+  const timers = [];
+  const supervisor = createBroadcastifySupervisor(
+    { enabled: true },
+    {
+      spawnProcess: () => child,
+      setTimeoutImpl: (callback, ms) => (timers.push({ callback, ms }), timers.length),
+      clearTimeoutImpl: jest.fn(),
+    },
+  );
+  const closing = supervisor.close();
+  expect(supervisor.close()).toBe(closing);
+  expect(child.stdin.end).toHaveBeenCalled();
+  expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+  timers.find(({ ms }) => ms === 5000).callback();
+  expect(child.kill).toHaveBeenCalledWith("SIGKILL");
+  child.emit("close", null, "SIGKILL");
+  await closing;
+});
+
+test("recovers from synchronous spawn failure and accepts a disabled configuration", async () => {
   const timers = [];
   const supervisor = createBroadcastifySupervisor(
     { enabled: true },
@@ -109,10 +131,10 @@ test("recovers from synchronous spawn failure and accepts a disabled configurati
   );
   expect(supervisor.ready()).toBe(false);
   timers[0]();
-  supervisor.close();
+  await supervisor.close();
   timers[1]();
   const disabled = createBroadcastifySupervisor({ enabled: false });
   expect(disabled.ready()).toBe(true);
   expect(disabled.status()).toEqual({ state: "disabled" });
-  disabled.close();
+  await disabled.close();
 });

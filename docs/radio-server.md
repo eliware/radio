@@ -178,10 +178,13 @@ change it, edit `LOG_LEVEL` in `compose.yaml` and run `docker compose up -d`. A 
 does not apply changed Compose environment values. Logs use timestamped JSON for Node.js messages.
 RTLSDR-Airband writes its own text messages to the same container log.
 
-To use a non-default channel-file directory, set `RADIO_CONFIG_DIR`. It must contain `police.env` and
-`fire.env`, in that order. The status listener binds to all container interfaces and uses
-`RADIO_HEALTH_PORT`, which defaults to `1400`. Compose publishes it on host loopback only. If
-changing the port, also update the published host mapping and health-check URL in `compose.yaml`.
+`RADIO_CONFIG_DIR` is optional. When set, it must contain `police.env` and `fire.env`, in that order.
+When unset, the application reads `.env.pd` and `.env.fd` beside its runtime module.
+`RADIO_HEALTH_PORT` is optional and defaults to `1400`.
+
+The status listener binds to all container interfaces.
+Compose publishes it on host loopback only. If changing the port, also update the published host
+mapping and health-check URL in `compose.yaml`.
 
 ## Troubleshooting
 

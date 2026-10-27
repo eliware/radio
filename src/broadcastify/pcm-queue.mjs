@@ -7,7 +7,7 @@ export function createPcmQueue(onError) {
   let congested = false;
   return {
     write(pcm) {
-      if (pcm.length % 2) return;
+      if (pcm.length === 0 || pcm.length % 2) return;
       chunks.push(pcm);
       queuedBytes += pcm.length;
       while (queuedBytes > maxQueuedBytes) {

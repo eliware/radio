@@ -7,6 +7,7 @@ export function createStatusServer(runtime, log = defaultLogger) {
     const health = request.url === "/health";
     const ready = request.url === "/ready";
     if (!health && !ready) return response.writeHead(404).end();
+    if (request.method !== "GET") return response.writeHead(405, { Allow: "GET" }).end();
     const isReady = runtime.ready();
     log.debug("Status endpoint requested", { route: request.url, ready: isReady });
     const result = createStatusResponse(request.url, isReady, runtime.status());

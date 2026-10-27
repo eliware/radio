@@ -199,6 +199,7 @@ test("reports child process errors and waits for restart", async () => {
   for (let attempt = 0; attempt < 20 && !failed.ready(); attempt += 1) await Promise.resolve();
   child.emit("error", new Error("process event error"));
   expect(failed.status().state).toBe("error");
+  child.emit("close", null, "SIGTERM");
   for (let attempt = 0; attempt < 20 && !releaseWait; attempt += 1) await Promise.resolve();
   expect(errors).toContain("process event error");
   expect(child.listenerCount("close")).toBe(0);
@@ -218,7 +219,10 @@ test("reports a pre-spawn child error as an error state", async () => {
     present: async () => true,
     spawnProcess: () => {
       child = new EventEmitter();
-      queueMicrotask(() => child.emit("error", new Error("spawn event failed")));
+      queueMicrotask(() => {
+        child.emit("error", new Error("spawn event failed"));
+        child.emit("close", null, "SIGTERM");
+      });
       return child;
     },
   });
