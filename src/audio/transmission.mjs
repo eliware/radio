@@ -45,7 +45,6 @@ export function createAudioTransmission({
     end,
     onError,
   });
-
   function flush() {
     if (!session.healthy()) {
       if (streamId) recovery.abandon(streamId);
@@ -116,6 +115,7 @@ export function createAudioTransmission({
     if (!idle.isIdle(force)) return;
     if (starting) await starting;
     if (!idle.isIdle(force)) return;
+    pcm = pcm.subarray(0, pcm.length - (pcm.length % INPUT_FRAME_BYTES));
     flush();
     pcm = Buffer.alloc(0);
     processor.finishTransmission();

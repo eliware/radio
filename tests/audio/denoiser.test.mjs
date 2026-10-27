@@ -12,8 +12,8 @@ test("buffers complete frames and mixes denoised PCM with original samples", () 
   const output = [];
   const denoiser = createAudioDenoiser({
     rnnoise: makeRnnoise((frame) => {
-      frame[0] = 2000;
-      frame[1] = -2000;
+      frame[0] = 2000 / 32768;
+      frame[1] = -2000 / 32768;
     }),
     rnnoiseMix: 0.5,
     onPcm: (pcm) => output.push(pcm),
@@ -26,6 +26,27 @@ test("buffers complete frames and mixes denoised PCM with original samples", () 
   denoiser.write(input.subarray(2));
   expect(output[0].readInt16LE(0)).toBe(1500);
   expect(output[0].readInt16LE(2)).toBe(-1500);
+  denoiser.close();
+});
+
+test("converts signed PCM samples to normalized RNNoise floats and scales output back", () => {
+  const observed = [];
+  const output = [];
+  const denoiser = createAudioDenoiser({
+    rnnoise: makeRnnoise((frame) => {
+      observed.push(...frame);
+      frame[0] = 0.25;
+      frame[1] = -0.25;
+    }),
+    onPcm: (pcm) => output.push(pcm),
+  });
+  const input = Buffer.alloc(4);
+  input.writeInt16LE(16384, 0);
+  input.writeInt16LE(-32768, 2);
+  denoiser.write(input);
+  expect(observed).toEqual([0.5, -1]);
+  expect(output[0].readInt16LE(0)).toBe(8192);
+  expect(output[0].readInt16LE(2)).toBe(-8192);
   denoiser.close();
 });
 

@@ -73,7 +73,9 @@ test("builds one runtime from channel files and combines component readiness", a
 });
 
 test("rejects incomplete channel configuration before starting services", async () => {
-  await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow("Two channels");
+  await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow(
+    "Exactly two channel configuration files are required",
+  );
   const paths = [];
   await expect(
     createRadioRuntime({
@@ -84,6 +86,42 @@ test("rejects incomplete channel configuration before starting services", async 
     }),
   ).rejects.toThrow("missing config");
   expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
+});
+
+test("requires exactly two configured channels", async () => {
+  const loadConfig = jest.fn(async () => config("851", "PD"));
+  await expect(createRadioRuntime({ configPaths: ["pd"], loadConfig })).rejects.toThrow(
+    "Exactly two channel configuration files are required",
+  );
+  expect(loadConfig).not.toHaveBeenCalled();
+});
+
+test("releases secrets when a UDP listener fails to bind", async () => {
+  const settings = [config("851", "PD"), config("853", "FD")];
+  const inputClose = jest.fn();
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {},
+      chmodConfig: async () => {},
+      makeInput: () => ({
+        listen: async () => {
+          throw new Error("bind failed");
+        },
+        close: inputClose,
+      }),
+      makeBroadcastify: () => ({
+        write: () => {},
+        ready: () => true,
+        status: () => ({ state: "disabled" }),
+        close: async () => {},
+      }),
+    }),
+  ).rejects.toThrow("bind failed");
+  expect(inputClose).toHaveBeenCalledTimes(2);
+  expect(knownSecrets).not.toContain(settings[0].PASSWORD);
 });
 
 test("closes Broadcastify streams and releases credentials if input creation throws", async () => {

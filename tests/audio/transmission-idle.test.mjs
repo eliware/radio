@@ -16,6 +16,7 @@ test("ends transmission after idle time and reports end failures", async () => {
   });
 
   idle.recordActivity();
+  expect(idle.isIdle()).toBe(false);
   idle.schedule();
   timerCallback();
   await Promise.resolve();

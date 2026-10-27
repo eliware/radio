@@ -28,3 +28,10 @@ test("preserves an existing window global and restores state after load failure"
   ).rejects.toThrow("load failed");
   expect(globalThis.window).toBe(existingWindow);
 });
+
+test("loads the bundled RNNoise implementation by default", async () => {
+  delete globalThis.window;
+  const rnnoise = await loadRnnoise();
+  expect(rnnoise.frameSize).toBeGreaterThan(0);
+  expect(globalThis.window).toBeUndefined();
+});

@@ -8,6 +8,20 @@ const requiredFields = [
   "SDR_SERIAL",
   "UDP_PORT",
 ];
+const allowedFields = new Set([
+  ...requiredFields,
+  ...Object.keys(ranges),
+  "SDR_GAIN",
+  "TONE",
+  "RNNOISE",
+  "TOKEN",
+  "BROADCASTIFY_ENABLED",
+  "BROADCASTIFY_HOST",
+  "BROADCASTIFY_PORT",
+  "BROADCASTIFY_MOUNT",
+  "BROADCASTIFY_PASSWORD",
+  "BROADCASTIFY_NAME",
+]);
 
 function required(values, name) {
   const value = values[name]?.trim();
@@ -16,6 +30,8 @@ function required(values, name) {
 }
 
 export function validateChannelSettings(values) {
+  const unknown = Object.keys(values).find((name) => !allowedFields.has(name));
+  if (unknown) throw new Error(`${unknown} is not a supported channel setting`);
   for (const name of requiredFields) required(values, name);
   if (!/^[a-zA-Z0-9_-]+$/.test(values.SDR_SERIAL)) throw new Error("SDR_SERIAL is invalid");
   for (const [name, [min, max]] of Object.entries(ranges)) {

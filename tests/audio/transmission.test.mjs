@@ -5,7 +5,6 @@ const rnnoise = {
   frameSize: 480,
   createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
 };
-
 test("streams gated audio once and stops after silence", async () => {
   jest.useFakeTimers();
   const sent = [];
@@ -216,23 +215,38 @@ test("closes an active stream even when shutdown happens before the idle timeout
   await new Promise((resolve) => setImmediate(resolve));
   expect(processor.finishTransmission).toHaveBeenCalledTimes(1);
 });
-
-test("does not end a transmission before the idle interval expires", async () => {
+test("drops a partial PCM frame between idle transmissions", async () => {
+  let now = 0;
   let idleCallback;
+  const processor = { write: jest.fn(), finishTransmission: jest.fn(), close: jest.fn() };
   const transmission = createAudioTransmission({
     rnnoise,
-    idleMs: 500,
-    now: () => 10,
+    idleMs: 10,
+    now: () => now,
     setTimeoutImpl: (callback) => ((idleCallback = callback), 1),
     clearTimeoutImpl: () => {},
+    createProcessor: () => processor,
     session: { healthy: () => true, startStream: async () => 3, stopStream: async () => {} },
   });
-  transmission.receive(Buffer.alloc(1280));
+  transmission.receive(Buffer.alloc(800));
+  await new Promise((resolve) => setImmediate(resolve));
   idleCallback();
   await new Promise((resolve) => setImmediate(resolve));
+  transmission.receive(Buffer.alloc(800));
+  await new Promise((resolve) => setImmediate(resolve));
+  now = 10;
+  idleCallback();
+  await new Promise((resolve) => setImmediate(resolve));
+  transmission.receive(Buffer.alloc(960));
+  await new Promise((resolve) => setImmediate(resolve));
+  now = 20;
+  idleCallback();
+  await new Promise((resolve) => setImmediate(resolve));
+  expect(processor.write).toHaveBeenCalledTimes(1);
+  expect(processor.write.mock.calls[0][0]).toHaveLength(1280);
+  expect(processor.finishTransmission).toHaveBeenCalledTimes(2);
   await transmission.close();
 });
-
 test("backs off failed Zello starts and discards stale audio", async () => {
   let now = 0;
   let startCount = 0;
@@ -260,7 +274,6 @@ test("backs off failed Zello starts and discards stale audio", async () => {
       stopStream: async () => {},
     },
   });
-
   transmission.receive(Buffer.alloc(1280, 1));
   await new Promise((resolve) => setImmediate(resolve));
   expect(startCount).toBe(1);

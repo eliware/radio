@@ -19,6 +19,7 @@ export function createBroadcastifyRuntime(
           getChild: () => supervisor.child,
         });
         outputs.push({
+          channel: config.CHANNEL,
           write: stream.write,
           ready: supervisor.ready,
           status: supervisor.status,
@@ -42,8 +43,15 @@ export function createBroadcastifyRuntime(
   return {
     outputs,
     ready: () => outputs.every((output) => output.ready()),
-    status: (channels) =>
-      Object.fromEntries(channels.map(({ name }, index) => [name, outputs[index].status()])),
+    status: (channels) => {
+      const outputByChannel = new Map(outputs.map((output) => [output.channel, output]));
+      return Object.fromEntries(
+        channels.map(({ name }) => [
+          name,
+          outputByChannel.get(name)?.status() ?? { state: "disabled" },
+        ]),
+      );
+    },
     close: () => Promise.allSettled(outputs.map((output) => output.close())),
   };
 }

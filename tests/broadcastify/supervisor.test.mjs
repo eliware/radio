@@ -88,6 +88,27 @@ test("reports process errors once and retries after the current child closes", a
   await supervisor.close();
 });
 
+test("ignores a stale child close after its retry has started a replacement", async () => {
+  const oldChild = childProcess();
+  const newChild = childProcess();
+  const timers = [];
+  const supervisor = createBroadcastifySupervisor(
+    { enabled: true },
+    {
+      spawnProcess: jest.fn().mockReturnValueOnce(oldChild).mockReturnValueOnce(newChild),
+      setTimeoutImpl: (callback, ms) => (timers.push({ callback, ms }), timers.length),
+      clearTimeoutImpl: jest.fn(),
+    },
+  );
+  oldChild.emit("error", new Error("spawn failed"));
+  timers.find(({ ms }) => ms === 1000).callback();
+  expect(supervisor.child).toBe(newChild);
+  oldChild.emit("close", 1);
+  expect(supervisor.child).toBe(newChild);
+  expect(supervisor.status()).toEqual({ state: "connecting" });
+  await supervisor.close();
+});
+
 test("reports signal exits when FFmpeg has no stderr output", async () => {
   const child = childProcess();
   const onError = jest.fn();

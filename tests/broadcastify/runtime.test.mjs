@@ -49,6 +49,22 @@ test("uses the default disabled stream and reports readiness", () => {
   expect(runtime.status([{ name: "Off" }]).Off.state).toBe("disabled");
 });
 
+test("reports status by channel name when configs are sparse or reordered", () => {
+  const supervisors = [
+    { ready: () => true, status: () => ({ state: "fire" }), close: async () => {} },
+  ];
+  const runtime = createBroadcastifyRuntime(
+    [{ CHANNEL: "Fire", BROADCASTIFY_ENABLED: "false" }],
+    () => ({ write: () => {}, close: async () => {} }),
+    undefined,
+    () => supervisors.shift(),
+  );
+  expect(runtime.status([{ name: "Police" }, { name: "Fire" }])).toEqual({
+    Police: { state: "disabled" },
+    Fire: { state: "fire" },
+  });
+});
+
 test("provides a default error handler to stream and supervisor factories", () => {
   const createSupervisor = (_settings, { onError }) => ({
     child: undefined,

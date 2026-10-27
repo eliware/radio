@@ -1,20 +1,20 @@
 export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = () => {} }) {
   let state = rnnoise.createDenoiseState();
   const frameBytes = rnnoise.frameSize * 2;
-  let buffered = Buffer.alloc(0);
+  const buffered = Buffer.alloc(frameBytes);
+  let bufferedBytes = 0;
   let closed = false;
 
   function processFrame() {
-    const pcm = buffered.subarray(0, frameBytes);
-    buffered = buffered.subarray(frameBytes);
-    const original = Float32Array.from({ length: rnnoise.frameSize }, (_, i) =>
-      pcm.readInt16LE(i * 2),
+    const original = Float32Array.from(
+      { length: rnnoise.frameSize },
+      (_, i) => buffered.readInt16LE(i * 2) / 32768,
     );
     const frame = Float32Array.from(original);
     state.processFrame(frame);
     const output = Buffer.alloc(frameBytes);
     for (let i = 0; i < frame.length; i += 1) {
-      const mixed = frame[i] * rnnoiseMix + original[i] * (1 - rnnoiseMix);
+      const mixed = (frame[i] * rnnoiseMix + original[i] * (1 - rnnoiseMix)) * 32768;
       output.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(mixed))), i * 2);
     }
     onPcm(output);
@@ -24,10 +24,19 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
     write(chunk) {
       if (closed) throw new Error("Audio denoiser is closed");
       try {
-        buffered = Buffer.concat([buffered, chunk]);
-        while (buffered.length >= frameBytes) processFrame();
+        let offset = 0;
+        while (offset < chunk.length) {
+          const copied = Math.min(frameBytes - bufferedBytes, chunk.length - offset);
+          chunk.copy(buffered, bufferedBytes, offset, offset + copied);
+          bufferedBytes += copied;
+          offset += copied;
+          if (bufferedBytes === frameBytes) {
+            processFrame();
+            bufferedBytes = 0;
+          }
+        }
       } catch (error) {
-        buffered = Buffer.alloc(0);
+        bufferedBytes = 0;
         let resetError;
         try {
           state.destroy();
@@ -46,7 +55,7 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
       }
     },
     reset() {
-      if (!closed) buffered = Buffer.alloc(0);
+      if (!closed) bufferedBytes = 0;
     },
     close() {
       if (closed) return;

@@ -56,6 +56,19 @@ test("binds an ephemeral localhost port and closes before a bind", async () => {
   expect(() => idle.close()).not.toThrow();
 });
 
+test("rejects duplicate listen calls and tolerates repeated close", async () => {
+  const input = createUdpInput({
+    port: 12001,
+    onMessage: () => {},
+    createSocketImpl: () => new FakeSocket(),
+  });
+  await input.listen();
+  await expect(input.listen()).rejects.toThrow("already listening or closed");
+  input.close();
+  input.close();
+  await expect(input.listen()).rejects.toThrow("already listening or closed");
+});
+
 test("uses the default socket error handler", () => {
   const socket = new FakeSocket();
   const input = createUdpInput({
@@ -81,8 +94,10 @@ test("rejects asynchronous and synchronous UDP bind errors", async () => {
     createSocketImpl: () => new FailedBindSocket(),
   });
   await expect(failed.listen()).rejects.toThrow("bind failed");
-  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "bind failed" }));
+  expect(onError).not.toHaveBeenCalled();
+  expect(failed).toBeDefined();
   failed.close();
+  expect(onError).not.toHaveBeenCalled();
 
   class ThrowingBindSocket extends FakeSocket {
     bind() {

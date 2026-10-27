@@ -38,7 +38,7 @@ export function createBroadcastifySupervisor(
       });
       child.stdin.on("error", () => onError(new Error("Broadcastify audio pipe failed")));
       child.on("error", () => {
-        if (closed) return;
+        if (closed || child !== process) return;
         failed = true;
         state = "retrying";
         onError(new Error("Broadcastify FFmpeg process failed"));
@@ -53,6 +53,7 @@ export function createBroadcastifySupervisor(
         }, 60000);
       });
       child.on("close", (code, signal) => {
+        if (child !== process) return;
         if (stableTimer) clearTimeoutImpl(stableTimer);
         stableTimer = undefined;
         child = undefined;

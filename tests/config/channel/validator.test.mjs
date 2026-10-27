@@ -28,6 +28,12 @@ test("leaves Broadcastify fields to the channel integration validator", () => {
   });
 });
 
+test("rejects unknown settings so unrecognized credentials cannot be logged", () => {
+  expect(() => validateChannelSettings({ ...valid, PRIVATE_TOKEN: "secret-value" })).toThrow(
+    "PRIVATE_TOKEN is not a supported channel setting",
+  );
+});
+
 test.each([
   "TOKEN=sample\n",
   "SDR_SERIAL=bad;include\n",

@@ -179,6 +179,7 @@ does not apply changed Compose environment values. Logs use timestamped JSON for
 RTLSDR-Airband writes its own text messages to the same container log.
 
 `RADIO_CONFIG_DIR` is optional. When set, it must contain `police.env` and `fire.env`, in that order.
+The runtime requires exactly these two channel configuration files.
 When unset, the application reads `.env.pd` and `.env.fd` beside its runtime module.
 `RADIO_HEALTH_PORT` is optional and defaults to `1400`.
 

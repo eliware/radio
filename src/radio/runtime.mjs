@@ -45,6 +45,8 @@ export async function createRadioRuntime({
   onError,
   log = logger,
 }) {
+  if (configPaths.length !== 2)
+    throw new Error("Exactly two channel configuration files are required");
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
   const releaseSecrets = rememberSecrets(configs);
   let rnnoise;
