@@ -114,6 +114,7 @@ test("closes a rejected login and handles socket errors", async () => {
   const unused = createZelloSession(config);
   unused.close();
   expect(unused.healthy()).toBe(false);
+  await expect(unused.waitForClose()).resolves.toBeUndefined();
 });
 
 test("rejects a websocket error before open so the supervisor can retry", async () => {

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createFfmpegArgs } from "./ffmpeg-args.mjs";
+import { sanitizeBroadcastifyStderr } from "./stderr-sanitizer.mjs";
 
 export function createBroadcastifySupervisor(
   settings,
@@ -51,7 +52,7 @@ export function createBroadcastifySupervisor(
         child = undefined;
         if (!closed) {
           if (!failed) {
-            const detail = sanitizeStderr(stderr, settings);
+            const detail = sanitizeBroadcastifyStderr(stderr, settings);
             const reason = [code === null ? signal : `code ${code}`, detail]
               .filter(Boolean)
               .join(": ");
@@ -89,11 +90,4 @@ export function createBroadcastifySupervisor(
       state = "closed";
     },
   };
-}
-
-function sanitizeStderr(stderr, settings) {
-  let detail = stderr.trim().split("\n").slice(-12).join(" | ");
-  if (settings.password) detail = detail.replaceAll(settings.password, "[redacted]");
-  if (settings.mount) detail = detail.replaceAll(settings.mount, "/[redacted]");
-  return detail.replace(/icecast:\/\/[^\s'"|]+/g, "icecast://[redacted]");
 }

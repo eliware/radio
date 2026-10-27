@@ -1,4 +1,5 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
+import { createAudioStreamRecovery } from "./stream-recovery.mjs";
 
 const INPUT_FRAME_BYTES = 320 * 4;
 
@@ -23,18 +24,15 @@ export function createAudioTransmission({
   });
   let pcm = Buffer.alloc(0);
   let streamId;
-  let abandonedStreamIds = [];
   let starting;
-  let stoppingAbandoned;
   let idleTimer;
   let lastPacketAt = 0;
-  let retryAt = 0;
-  let retryDelay = 1000;
   let closed = false;
+  const recovery = createAudioStreamRecovery({ session, onError, now });
 
   function flush() {
     if (!session.healthy()) {
-      if (streamId) abandonedStreamIds.push(streamId);
+      if (streamId) recovery.abandon(streamId);
       streamId = undefined;
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
@@ -55,17 +53,9 @@ export function createAudioTransmission({
   }
 
   function stopAbandonedStreams() {
-    if (stoppingAbandoned || !session.healthy() || abandonedStreamIds.length === 0)
-      return stoppingAbandoned;
-    const ids = abandonedStreamIds;
-    abandonedStreamIds = [];
-    stoppingAbandoned = Promise.all(ids.map((id) => session.stopStream(id).catch(onError))).finally(
-      () => {
-        stoppingAbandoned = undefined;
-        if (!closed) begin();
-      },
-    );
-    return stoppingAbandoned;
+    return recovery.stopAbandoned(() => {
+      if (!closed) begin();
+    });
   }
 
   function begin() {
@@ -73,12 +63,12 @@ export function createAudioTransmission({
       closed ||
       streamId ||
       starting ||
-      stoppingAbandoned ||
+      recovery.isStopping ||
       !session.healthy() ||
-      now() < retryAt
+      !recovery.canStart()
     )
       return;
-    if (abandonedStreamIds.length) {
+    if (recovery.hasAbandoned) {
       stopAbandonedStreams()?.catch(onError);
       return;
     }
@@ -86,16 +76,13 @@ export function createAudioTransmission({
       .startStream()
       .then((id) => {
         streamId = id;
-        retryAt = 0;
-        retryDelay = 1000;
+        recovery.started();
         flush();
       })
       .catch((error) => {
         pcm = Buffer.alloc(0);
         processor.finishTransmission();
-        retryAt = now() + retryDelay;
-        retryDelay = Math.min(retryDelay * 2, 30000);
-        onError(error);
+        recovery.failed(error);
       })
       .finally(() => {
         starting = undefined;
@@ -131,7 +118,7 @@ export function createAudioTransmission({
     receive(packet) {
       if (closed || !session.healthy()) return;
       lastPacketAt = now();
-      if (now() < retryAt) return;
+      if (!recovery.canStart()) return;
       pcm = Buffer.concat([pcm, packet]);
       begin();
       flush();
