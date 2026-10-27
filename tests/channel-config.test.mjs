@@ -1,3 +1,4 @@
+import { readChannelConfigFile } from "../src/config/file-reader.mjs";
 import { loadChannelConfig } from "../src/channel-config.mjs";
 
 const source = (patch = "") =>
@@ -8,8 +9,10 @@ test("loads one channel file with a multiline PEM key", async () => {
   expect((await load(source())).PRIVATE_KEY).toContain("BEGIN PRIVATE KEY");
   expect((await load(source("RNNOISE=80\n"))).RNNOISE).toBe("80");
   expect((await load(source())).RNNOISE).toBe("100");
-  await expect(loadChannelConfig("test-fixtures/channel.env")).resolves.toHaveProperty(
-    "CHANNEL",
-    "Test Police",
-  );
+});
+
+test("reads the approved environment example file", async () => {
+  await expect(
+    readChannelConfigFile(new URL("../.env.example", import.meta.url)),
+  ).resolves.toHaveProperty("CHANNEL", "replace-with-channel-name");
 });
