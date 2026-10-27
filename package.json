@@ -1,6 +1,6 @@
 {
   "name": "@eliware/radio",
-  "version": "15.0.0",
+  "version": "15.0.1",
   "type": "module",
   "description": "NBFM receiver audio bridge to Zello channels",
   "keywords": [

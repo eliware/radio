@@ -1,9 +1,7 @@
 # Release Notes
 
-## 15.0.0 — 2026-10-23
+## 15.0.1 — 2026-10-27
 
-### Added
+### Changed
 
-- Added a private NBFM audio bridge with health and readiness routes.
-- Added Zello WebSocket sessions with reconnect backoff.
-- Added one startup tone for each configured channel.
+- Updated `@eliware/common` and `@eliware/resampler` to 15.0.1.
