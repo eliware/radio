@@ -1,5 +1,6 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
 import { createAudioStreamRecovery } from "./stream-recovery.mjs";
+import { createAudioIdleTimer } from "./idle-timer.mjs";
 
 const INPUT_FRAME_BYTES = 320 * 4;
 
@@ -31,23 +32,25 @@ export function createAudioTransmission({
     },
     onError,
   });
-  let pcm = Buffer.alloc(0);
-  let streamId;
-  let starting;
-  let idleTimer;
-  let lastPacketAt = 0;
+  let pcm = Buffer.alloc(0),
+    streamId,
+    starting;
   let closed = false;
   const recovery = createAudioStreamRecovery({ session, onError, now });
-
+  const idle = createAudioIdleTimer({
+    idleMs,
+    now,
+    setTimeoutImpl,
+    clearTimeoutImpl,
+    onIdle: () => end().catch(onError),
+  });
   function flush() {
     if (!session.healthy()) {
       if (streamId) recovery.abandon(streamId);
       streamId = undefined;
       pcm = Buffer.alloc(0);
       processor.finishTransmission();
-      clearTimeoutImpl(idleTimer);
-      idleTimer = undefined;
-      lastPacketAt = 0;
+      idle.reset();
       return;
     }
     while (streamId && pcm.length >= INPUT_FRAME_BYTES) {
@@ -110,9 +113,9 @@ export function createAudioTransmission({
 
   async function end(force = false) {
     if (closed && !force) return;
-    if (!force && now() - lastPacketAt < idleMs) return;
+    if (!idle.isIdle(force)) return;
     if (starting) await starting;
-    if (!force && now() - lastPacketAt < idleMs) return;
+    if (!idle.isIdle(force)) return;
     flush();
     pcm = Buffer.alloc(0);
     processor.finishTransmission();
@@ -124,10 +127,9 @@ export function createAudioTransmission({
   async function close() {
     if (closed) return;
     closed = true;
-    clearTimeoutImpl(idleTimer);
+    idle.reset();
     if (starting) await starting;
     await stopAbandonedStreams();
-    lastPacketAt = 0;
     await end(true);
     await stopAbandonedStreams();
     processor.close();
@@ -136,13 +138,12 @@ export function createAudioTransmission({
   return {
     receive(packet) {
       if (closed || !session.healthy()) return;
-      lastPacketAt = now();
+      idle.recordActivity();
       if (!recovery.canStart()) return;
       pcm = Buffer.concat([pcm, packet]);
       begin();
       flush();
-      clearTimeoutImpl(idleTimer);
-      idleTimer = setTimeoutImpl(() => end().catch(onError), idleMs);
+      idle.schedule();
     },
     close,
   };

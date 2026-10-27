@@ -146,3 +146,26 @@ test("recovers from synchronous spawn failure and accepts a disabled configurati
   expect(disabled.status()).toEqual({ state: "disabled" });
   await disabled.close();
 });
+
+test("does not schedule another retry if startup failure closes the supervisor", async () => {
+  let supervisor;
+  let closing;
+  let attempts = 0;
+  const timers = [];
+  supervisor = createBroadcastifySupervisor(
+    { enabled: true },
+    {
+      spawnProcess: () => {
+        attempts += 1;
+        if (attempts > 1) closing = supervisor.close();
+        throw new Error("spawn failed");
+      },
+      setTimeoutImpl: (callback) => (timers.push(callback), timers.length),
+      clearTimeoutImpl: jest.fn(),
+    },
+  );
+  timers[0]();
+  await closing;
+  expect(attempts).toBe(2);
+  expect(timers).toHaveLength(1);
+});

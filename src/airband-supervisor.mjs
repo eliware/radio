@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { logger as defaultLogger } from "./logger.mjs";
 import { hasUsbSerial } from "./usb/device.mjs";
 import { waitForAirbandDevices } from "./airband/device-monitor.mjs";
+import { createAirbandRetry } from "./airband/retry.mjs";
 
 export function createAirbandSupervisor({
   configs,
@@ -23,9 +24,9 @@ export function createAirbandSupervisor({
     resolveStop = resolve;
   });
   const pause = (ms) => Promise.race([wait(ms), stopSignal]);
+  const retry = createAirbandRetry();
 
   async function run() {
-    let delay = 1000;
     while (!stopped) {
       try {
         const ready = await waitForDevices(configs, {
@@ -33,7 +34,7 @@ export function createAirbandSupervisor({
           wait: pause,
           shouldStop: () => stopped,
           onMissing: () => {
-            delay = 1000;
+            retry.reset();
             state = "waiting-for-sdrs";
           },
         });
@@ -88,8 +89,7 @@ export function createAirbandSupervisor({
         error = cause.message;
         onError(cause);
       }
-      const retryDelay = delay;
-      delay = Math.min(delay * 2, 30000);
+      const retryDelay = retry.nextDelay();
       if (!stopped) await pause(retryDelay);
     }
   }

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createFfmpegArgs } from "./ffmpeg-args.mjs";
 import { sanitizeBroadcastifyStderr } from "./stderr-sanitizer.mjs";
+import { createBroadcastifyRetry } from "./retry.mjs";
 
 export function createBroadcastifySupervisor(
   settings,
@@ -11,19 +12,15 @@ export function createBroadcastifySupervisor(
     clearTimeoutImpl = clearTimeout,
   } = {},
 ) {
-  let child, retryTimer, stableTimer, closing;
-  let retryDelay = 1000;
+  let child, stableTimer, closing;
   let state = settings.enabled ? "connecting" : "disabled";
   let closed = false;
+  const retry = createBroadcastifyRetry({ setTimeoutImpl, clearTimeoutImpl });
 
   function scheduleRestart() {
-    if (closed || retryTimer) return;
+    if (closed) return;
     state = "retrying";
-    retryTimer = setTimeoutImpl(() => {
-      retryTimer = undefined;
-      start();
-    }, retryDelay);
-    retryDelay = Math.min(retryDelay * 2, 300000);
+    retry.schedule(start);
   }
 
   function start() {
@@ -52,7 +49,7 @@ export function createBroadcastifySupervisor(
         state = "running";
         stableTimer = setTimeoutImpl(() => {
           stableTimer = undefined;
-          retryDelay = 1000;
+          retry.reset();
         }, 60000);
       });
       child.on("close", (code, signal) => {
@@ -87,7 +84,7 @@ export function createBroadcastifySupervisor(
     close: () => {
       if (closing) return closing;
       closed = true;
-      if (retryTimer) clearTimeoutImpl(retryTimer);
+      retry.close();
       if (stableTimer) clearTimeoutImpl(stableTimer);
       state = "closed";
       const process = child;
