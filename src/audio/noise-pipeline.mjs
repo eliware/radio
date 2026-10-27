@@ -35,9 +35,15 @@ export function createNoisePipeline({
     close: () => {
       if (closed) return;
       closed = true;
-      resampler.close();
-      denoiser.close();
-      packetizer.close();
+      let closeError;
+      for (const resource of [resampler, denoiser, packetizer]) {
+        try {
+          resource.close();
+        } catch (error) {
+          closeError ??= error;
+        }
+      }
+      if (closeError) throw closeError;
     },
   };
 }

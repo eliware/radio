@@ -69,6 +69,21 @@ test("rejects duplicate listen calls and tolerates repeated close", async () => 
   await expect(input.listen()).rejects.toThrow("already listening or closed");
 });
 
+test("rejects a pending bind when the input closes", async () => {
+  const socket = new FakeSocket();
+  socket.bind = () => {};
+  const input = createUdpInput({
+    port: 12001,
+    onMessage: () => {},
+    createSocketImpl: () => socket,
+  });
+  const listening = input.listen();
+  input.close();
+  await expect(listening).rejects.toThrow("closed while binding");
+  expect(socket.listenerCount("error")).toBe(0);
+  expect(socket.listenerCount("message")).toBe(0);
+});
+
 test("uses the default socket error handler", () => {
   const socket = new FakeSocket();
   const input = createUdpInput({

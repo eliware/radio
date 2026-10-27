@@ -47,6 +47,12 @@ test("stops abandoned streams once the session is healthy", async () => {
   recovery.abandon(5);
   await recovery.stopAbandoned();
   expect(stopped).toEqual([3, 4, 5]);
+  healthy = false;
+  await recovery.stopOrAbandon(6);
+  expect(recovery.hasAbandoned).toBe(true);
+  healthy = true;
+  await recovery.stopOrAbandon();
+  expect(stopped).toEqual([3, 4, 5, 6]);
 });
 
 test("shares concurrent abandoned cleanup and reports stop errors", async () => {

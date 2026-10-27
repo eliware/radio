@@ -63,3 +63,17 @@ test("rejects malformed samples and writes after close while close and finish ar
   pipeline.finishTransmission();
   expect(() => pipeline.write(Buffer.alloc(4))).toThrow("closed");
 });
+
+test("closes remaining audio resources when RNNoise destruction fails", () => {
+  const destroy = jest.fn(() => {
+    throw new Error("destroy failed");
+  });
+  const pipeline = createNoisePipeline({
+    rnnoise: { frameSize: 480, createDenoiseState: () => ({ processFrame: () => {}, destroy }) },
+    onPacket: () => {},
+  });
+  expect(() => pipeline.close()).toThrow("destroy failed");
+  expect(destroy).toHaveBeenCalledTimes(1);
+  expect(() => pipeline.write(Buffer.alloc(4))).toThrow("closed");
+  expect(() => pipeline.close()).not.toThrow();
+});

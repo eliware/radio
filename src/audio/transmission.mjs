@@ -3,7 +3,6 @@ import { createAudioStreamRecovery } from "./stream-recovery.mjs";
 import { createTransmissionIdle } from "./transmission-idle.mjs";
 
 const INPUT_FRAME_BYTES = 320 * 4;
-
 export function createAudioTransmission({
   session,
   rnnoise,
@@ -74,9 +73,10 @@ export function createAudioTransmission({
       }
     }
   }
-
   function stopAbandonedStreams() {
-    return recovery.stopAbandoned(() => !closed && begin());
+    return recovery.stopAbandoned(() => {
+      if (!closed && pcm.length) begin();
+    });
   }
 
   function begin() {
@@ -96,8 +96,9 @@ export function createAudioTransmission({
     starting = session
       .startStream()
       .then((id) => {
-        streamId = id;
         recovery.started();
+        if (closed) return recovery.stopOrAbandon(id);
+        streamId = id;
         flush();
       })
       .catch((error) => {
@@ -111,8 +112,7 @@ export function createAudioTransmission({
   }
 
   async function end(force = false) {
-    if (closed && !force) return;
-    if (!idle.isIdle(force)) return;
+    if ((closed && !force) || !idle.isIdle(force)) return;
     if (starting) await starting;
     if (!idle.isIdle(force)) return;
     pcm = pcm.subarray(0, pcm.length - (pcm.length % INPUT_FRAME_BYTES));
@@ -121,7 +121,7 @@ export function createAudioTransmission({
     processor.finishTransmission();
     const id = streamId;
     streamId = undefined;
-    if (id && session.healthy()) await session.stopStream(id).catch(onError);
+    await recovery.stopOrAbandon(id);
   }
 
   async function close() {

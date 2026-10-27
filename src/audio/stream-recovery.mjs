@@ -24,6 +24,10 @@ export function createAudioStreamRecovery({ session, onError, now, maxRetryDelay
     abandon(id) {
       abandonedIds.push(id);
     },
+    stopOrAbandon(id) {
+      if (id !== undefined) abandonedIds.push(id);
+      return this.stopAbandoned();
+    },
     stopAbandoned(onComplete = () => {}) {
       if (stopping || !session.healthy() || abandonedIds.length === 0) return stopping;
       const ids = abandonedIds;

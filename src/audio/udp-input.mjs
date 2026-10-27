@@ -10,6 +10,7 @@ export function createUdpInput({
   let listening = false;
   let binding = false;
   let closed = false;
+  let cancelBinding;
   socket.on("message", onMessage);
   const handleError = (error) => {
     if (!binding && !closed) onError(error);
@@ -25,14 +26,17 @@ export function createUdpInput({
       binding = true;
       const failed = (error) => {
         binding = false;
+        cancelBinding = undefined;
         socket.off("error", failed);
         reject(error);
       };
+      cancelBinding = () => failed(new Error("UDP input closed while binding"));
       socket.once("error", failed);
       try {
         socket.bind(port, "127.0.0.1", () => {
           socket.off("error", failed);
           binding = false;
+          cancelBinding = undefined;
           listening = true;
           resolve(socket.address().port);
         });
@@ -43,6 +47,7 @@ export function createUdpInput({
 
   const close = () => {
     if (closed) return;
+    cancelBinding?.();
     closed = true;
     socket.off("error", handleError);
     socket.off("message", onMessage);

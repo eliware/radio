@@ -91,12 +91,18 @@ export function createBroadcastifySupervisor(
       const process = child;
       if (!process) return Promise.resolve();
       closing = new Promise((resolve) => {
-        const forceTimer = setTimeoutImpl(() => process.kill("SIGKILL"), 5000);
-        process.once("close", () => {
+        let forceTimer;
+        const finish = () => {
           clearTimeoutImpl(forceTimer);
+          process.off("close", finish);
           child = undefined;
           resolve();
-        });
+        };
+        process.once("close", finish);
+        forceTimer = setTimeoutImpl(() => {
+          process.kill("SIGKILL");
+          finish();
+        }, 5000);
         process.stdin.end();
         process.kill("SIGTERM");
       });

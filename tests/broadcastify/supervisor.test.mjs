@@ -139,8 +139,8 @@ test("waits for FFmpeg shutdown and force kills it after the grace period", asyn
   expect(child.kill).toHaveBeenCalledWith("SIGTERM");
   timers.find(({ ms }) => ms === 5000).callback();
   expect(child.kill).toHaveBeenCalledWith("SIGKILL");
-  child.emit("close", null, "SIGKILL");
   await closing;
+  expect(supervisor.child).toBeUndefined();
 });
 
 test("recovers from synchronous spawn failure and accepts a disabled configuration", async () => {

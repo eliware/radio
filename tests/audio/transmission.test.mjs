@@ -57,22 +57,15 @@ test("drops buffered audio if the session disconnects during stream startup", as
   expect(sent).toEqual([]);
 });
 
-test("stops a stream that starts during shutdown if the session recovers", async () => {
-  let healthy = true;
+test("stops a stream that starts after shutdown begins", async () => {
   let finishStart;
   const stopStream = jest.fn(async () => {});
-  const processor = {
-    write: () => {},
-    finishTransmission: () => {
-      if (!healthy) healthy = true;
-    },
-    close: () => {},
-  };
+  const processor = { write: jest.fn(), finishTransmission: jest.fn(), close: jest.fn() };
   const transmission = createAudioTransmission({
     rnnoise,
     createProcessor: () => processor,
     session: {
-      healthy: () => healthy,
+      healthy: () => true,
       startStream: () => new Promise((resolve) => (finishStart = resolve)),
       sendAudio: () => {},
       stopStream,
@@ -80,10 +73,10 @@ test("stops a stream that starts during shutdown if the session recovers", async
   });
   transmission.receive(Buffer.alloc(1280));
   const closing = transmission.close();
-  healthy = false;
   finishStart(12);
   await closing;
   expect(stopStream).toHaveBeenCalledWith(12);
+  expect(processor.write).not.toHaveBeenCalled();
 });
 
 test("stops an abandoned stream after the Zello session reconnects", async () => {
