@@ -2,7 +2,7 @@ import { getBroadcastifySettings } from "./settings.mjs";
 import { createBroadcastifyStream } from "./stream.mjs";
 import { createBroadcastifySupervisor } from "./supervisor.mjs";
 
-export function createBroadcastifyRuntime(
+export async function createBroadcastifyRuntime(
   configs,
   createStream = createBroadcastifyStream,
   onError = () => {},
@@ -25,19 +25,19 @@ export function createBroadcastifyRuntime(
           status: supervisor.status,
           close: async () => {
             try {
-              stream.close();
+              await stream.close();
             } finally {
               await supervisor.close();
             }
           },
         });
       } catch (error) {
-        Promise.resolve(supervisor.close()).catch(onError);
+        await Promise.resolve(supervisor.close()).catch(onError);
         throw error;
       }
     }
   } catch (error) {
-    outputs.forEach((output) => Promise.resolve(output.close()).catch(onError));
+    await Promise.allSettled(outputs.map((output) => output.close()));
     throw error;
   }
   return {

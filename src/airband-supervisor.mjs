@@ -28,12 +28,21 @@ export function createAirbandSupervisor({
   });
   const pause = (ms) => Promise.race([wait(ms), stopSignal]);
   const retry = createAirbandRetry();
+  let presenceCheckFailed = false;
+  const checkPresence = async (serial) => {
+    try {
+      return await present(serial);
+    } catch (cause) {
+      presenceCheckFailed = true;
+      throw cause;
+    }
+  };
 
   async function run() {
     while (!stopped) {
       try {
         const ready = await waitForDevices(configs, {
-          present,
+          present: checkPresence,
           wait: pause,
           shouldStop: () => stopped,
           onMissing: () => {
@@ -43,6 +52,10 @@ export function createAirbandSupervisor({
         });
         if (!ready) break;
         if (stopped) break;
+        if (presenceCheckFailed) {
+          retry.reset();
+          presenceCheckFailed = false;
+        }
         error = undefined;
         state = "starting";
         log.info("Starting RTLSDR-Airband", {

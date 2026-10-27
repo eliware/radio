@@ -70,7 +70,7 @@ export async function createRadioRuntime({
   let inputs = [];
   let channels;
   try {
-    broadcastify = createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
+    broadcastify = await createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
     channels = createRadioChannels(configs, makeSession);
     inputs = createRadioInputs(channels, broadcastify.outputs, rnnoise, makeInput, reportError);
   } catch (error) {

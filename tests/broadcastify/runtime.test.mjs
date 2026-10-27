@@ -23,7 +23,7 @@ test("coordinates stream creation, supervisor readiness, status, and shutdown", 
     if (createStream.mock.calls.length === 1) expect(getChild()).toBe(child);
     return { write: jest.fn(), close: streamClose };
   });
-  const runtime = createBroadcastifyRuntime(
+  const runtime = await createBroadcastifyRuntime(
     [{ CHANNEL: "PD" }, { CHANNEL: "FD" }],
     createStream,
     undefined,
@@ -43,17 +43,17 @@ test("coordinates stream creation, supervisor readiness, status, and shutdown", 
   expect(createSupervisor.mock.results.map(({ value }) => value.close)).toHaveLength(2);
 });
 
-test("uses the default disabled stream and reports readiness", () => {
-  const runtime = createBroadcastifyRuntime([{ BROADCASTIFY_ENABLED: "false" }]);
+test("uses the default disabled stream and reports readiness", async () => {
+  const runtime = await createBroadcastifyRuntime([{ BROADCASTIFY_ENABLED: "false" }]);
   expect(runtime.ready()).toBe(true);
   expect(runtime.status([{ name: "Off" }]).Off.state).toBe("disabled");
 });
 
-test("reports status by channel name when configs are sparse or reordered", () => {
+test("reports status by channel name when configs are sparse or reordered", async () => {
   const supervisors = [
     { ready: () => true, status: () => ({ state: "fire" }), close: async () => {} },
   ];
-  const runtime = createBroadcastifyRuntime(
+  const runtime = await createBroadcastifyRuntime(
     [{ CHANNEL: "Fire", BROADCASTIFY_ENABLED: "false" }],
     () => ({ write: () => {}, close: async () => {} }),
     undefined,
@@ -65,7 +65,7 @@ test("reports status by channel name when configs are sparse or reordered", () =
   });
 });
 
-test("provides a default error handler to stream and supervisor factories", () => {
+test("provides a default error handler to stream and supervisor factories", async () => {
   const createSupervisor = (_settings, { onError }) => ({
     child: undefined,
     ready: () => true,
@@ -73,7 +73,7 @@ test("provides a default error handler to stream and supervisor factories", () =
     close: async () => {},
     report: () => onError(new Error("sample")),
   });
-  const runtime = createBroadcastifyRuntime(
+  const runtime = await createBroadcastifyRuntime(
     [{ BROADCASTIFY_ENABLED: "false" }],
     (_settings, { onError }) => {
       expect(() => onError(new Error("sample"))).not.toThrow();
@@ -85,9 +85,9 @@ test("provides a default error handler to stream and supervisor factories", () =
   expect(runtime.ready()).toBe(true);
 });
 
-test("closes a supervisor when stream construction throws", async () => {
+test("awaits supervisor cleanup when stream construction throws", async () => {
   const close = jest.fn(async () => {});
-  expect(() =>
+  await expect(
     createBroadcastifyRuntime(
       [{ BROADCASTIFY_ENABLED: "false" }],
       () => {
@@ -96,34 +96,50 @@ test("closes a supervisor when stream construction throws", async () => {
       undefined,
       () => ({ child: undefined, ready: () => false, status: () => ({}), close }),
     ),
-  ).toThrow("stream factory failed");
-  await Promise.resolve();
+  ).rejects.toThrow("stream factory failed");
   expect(close).toHaveBeenCalledTimes(1);
 });
 
-test("closes completed outputs when a later stream factory throws", async () => {
+test("awaits cleanup of completed outputs when a later stream factory throws", async () => {
   let streamCalls = 0;
-  const closeStream = jest.fn();
-  const closeSupervisor = jest.fn(async () => {});
+  let releaseStreamClose;
+  const streamFinished = new Promise((resolve) => (releaseStreamClose = resolve));
+  const closeStream = jest.fn(() => streamFinished);
+  let releaseClose;
+  const closeFinished = new Promise((resolve) => (releaseClose = resolve));
+  const closeSupervisor = jest.fn(() => closeFinished);
   const createSupervisor = () => ({
     child: undefined,
     ready: () => true,
     status: () => ({ state: "disabled" }),
     close: closeSupervisor,
   });
-  expect(() =>
-    createBroadcastifyRuntime(
-      [{ CHANNEL: "PD" }, { CHANNEL: "FD" }],
-      () => {
-        streamCalls += 1;
-        if (streamCalls === 2) throw new Error("later stream failed");
-        return { write: () => {}, close: closeStream };
-      },
-      undefined,
-      createSupervisor,
-    ),
-  ).toThrow("later stream failed");
+  const startup = createBroadcastifyRuntime(
+    [{ CHANNEL: "PD" }, { CHANNEL: "FD" }],
+    () => {
+      streamCalls += 1;
+      if (streamCalls === 2) throw new Error("later stream failed");
+      return { write: () => {}, close: closeStream };
+    },
+    undefined,
+    createSupervisor,
+  );
+  let settled = false;
+  const rejection = expect(startup)
+    .rejects.toThrow("later stream failed")
+    .finally(() => {
+      settled = true;
+    });
   await Promise.resolve();
+  expect(closeStream).not.toHaveBeenCalled();
+  expect(closeSupervisor).toHaveBeenCalledTimes(1);
+  expect(settled).toBe(false);
+  releaseClose();
+  for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
+  expect(closeStream).toHaveBeenCalledTimes(1);
+  expect(settled).toBe(false);
+  releaseStreamClose();
+  await rejection;
   expect(closeStream).toHaveBeenCalledTimes(1);
   expect(closeSupervisor).toHaveBeenCalledTimes(2);
 });
