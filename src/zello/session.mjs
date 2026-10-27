@@ -31,7 +31,11 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
       },
     });
     const currentSocket = connection.socket;
-    currentCommands = createZelloCommands(currentSocket, () => online);
+    currentCommands = createZelloCommands(
+      currentSocket,
+      () => online,
+      () => connection?.socket === currentSocket,
+    );
     commands = currentCommands;
     streams.setRequest(currentCommands.request);
     await connection.opening;

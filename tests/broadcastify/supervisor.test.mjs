@@ -4,7 +4,7 @@ import { createBroadcastifySupervisor } from "../../src/broadcastify/supervisor.
 
 function childProcess() {
   const child = new EventEmitter();
-  child.stdin = Object.assign(new EventEmitter(), { end: jest.fn() });
+  child.stdin = Object.assign(new EventEmitter(), { end: jest.fn(), writable: true });
   child.stderr = new EventEmitter();
   child.kill = jest.fn(() => child.emit("close", null, "SIGTERM"));
   return child;
@@ -29,8 +29,14 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
       clearTimeoutImpl: (timer) => cleared.push(timer),
     },
   );
+  expect(supervisor.ready()).toBe(false);
+  expect(supervisor.status()).toEqual({ state: "connecting" });
+  supervisor.child.emit("spawn");
   expect(supervisor.ready()).toBe(true);
   expect(supervisor.status()).toEqual({ state: "running" });
+  supervisor.child.stdin.writable = false;
+  expect(supervisor.ready()).toBe(false);
+  supervisor.child.stdin.writable = true;
   supervisor.child.stdin.emit("error", new Error("stdin failed"));
   expect(onError).toHaveBeenCalledWith(new Error("Broadcastify audio pipe failed"));
   const stable = timers.find((timer) => timer.ms === 60000);
@@ -45,11 +51,13 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   const retry = timers.find((timer) => timer.ms === 1000);
   retry.callback();
   const second = spawnProcess.mock.results[1].value;
+  second.emit("spawn");
   await supervisor.close();
   expect(second.stdin.end).toHaveBeenCalled();
   expect(second.kill).toHaveBeenCalledWith("SIGTERM");
   expect(supervisor.status()).toEqual({ state: "closed" });
   expect(cleared.length).toBeGreaterThan(0);
+  second.emit("spawn");
   second.emit("error", new Error("late failure"));
   second.emit("close", 1);
 });

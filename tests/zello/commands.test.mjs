@@ -52,3 +52,18 @@ test("fails pending commands when the connection closes or a request times out",
   await timeoutResult;
   jest.useRealTimers();
 });
+
+test("ignores responses from a socket that is no longer active", async () => {
+  const socket = new Socket();
+  let active = true;
+  const commands = createZelloCommands(
+    socket,
+    () => true,
+    () => active,
+  );
+  const pending = commands.request({ command: "start_stream" });
+  active = false;
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: socket.last.seq, success: true })));
+  commands.close(new Error("socket replaced"));
+  await expect(pending).rejects.toThrow("socket replaced");
+});

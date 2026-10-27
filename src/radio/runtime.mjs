@@ -17,6 +17,15 @@ import { closeRadioResources } from "./resources.mjs";
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
 
+function releaseSecretsAndRedact(releaseSecrets, error) {
+  const details = errorDetails(error);
+  releaseSecrets();
+  const safeError = new Error(details.message);
+  safeError.name = details.name;
+  safeError.stack = details.stack;
+  return safeError;
+}
+
 export async function createRadioRuntime({
   configPaths = defaults.configPaths,
   airbandPath = defaults.airbandPath,
@@ -36,12 +45,18 @@ export async function createRadioRuntime({
   log = logger,
 }) {
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
-  const rnnoise = await loadNoise();
-  const reportError =
-    onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
-  await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
-  await chmodConfig(airbandPath, 0o600);
   const releaseSecrets = rememberSecrets(configs);
+  let rnnoise;
+  let reportError;
+  try {
+    rnnoise = await loadNoise();
+    reportError =
+      onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
+    await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
+    await chmodConfig(airbandPath, 0o600);
+  } catch (error) {
+    throw releaseSecretsAndRedact(releaseSecrets, error);
+  }
   let broadcastify;
   let inputs = [];
   let channels;
@@ -51,8 +66,7 @@ export async function createRadioRuntime({
     inputs = createRadioInputs(channels, broadcastify.outputs, rnnoise, makeInput, reportError);
   } catch (error) {
     await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
-    releaseSecrets();
-    throw error;
+    throw releaseSecretsAndRedact(releaseSecrets, error);
   }
   const listening = await Promise.allSettled(
     inputs.map((input) => Promise.resolve().then(() => input.listen())),
@@ -60,8 +74,7 @@ export async function createRadioRuntime({
   const listenFailure = listening.find(({ status }) => status === "rejected");
   if (listenFailure) {
     await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
-    releaseSecrets();
-    throw listenFailure.reason;
+    throw releaseSecretsAndRedact(releaseSecrets, listenFailure.reason);
   }
   log.info("Radio audio inputs are listening", { channels: configs.map(({ CHANNEL }) => CHANNEL) });
   let sessions;
@@ -79,8 +92,7 @@ export async function createRadioRuntime({
     });
   } catch (error) {
     await closeRadioResources({ inputs, broadcastify, sessions }, { ignoreErrors: true });
-    releaseSecrets();
-    throw error;
+    throw releaseSecretsAndRedact(releaseSecrets, error);
   }
   return {
     close: async () => {

@@ -1,4 +1,4 @@
-export function createZelloCommands(socket, isOnline) {
+export function createZelloCommands(socket, isOnline, isActive = () => true) {
   let sequence = 0;
   const waiting = new Map();
 
@@ -11,6 +11,7 @@ export function createZelloCommands(socket, isOnline) {
   }
 
   socket.on("message", (data) => {
+    if (!isActive()) return;
     let response;
     try {
       response = JSON.parse(data.toString());

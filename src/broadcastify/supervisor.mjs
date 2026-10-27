@@ -35,6 +35,7 @@ export function createBroadcastifySupervisor(
       child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
         stdio: ["pipe", "ignore", "pipe"],
       });
+      const process = child;
       child.stderr?.on("data", (chunk) => {
         stderr = `${stderr}${chunk}`.slice(-4096);
       });
@@ -45,6 +46,14 @@ export function createBroadcastifySupervisor(
         state = "retrying";
         onError(new Error("Broadcastify FFmpeg process failed"));
         scheduleRestart();
+      });
+      child.on("spawn", () => {
+        if (closed || child !== process) return;
+        state = "running";
+        stableTimer = setTimeoutImpl(() => {
+          stableTimer = undefined;
+          retryDelay = 1000;
+        }, 60000);
       });
       child.on("close", (code, signal) => {
         if (stableTimer) clearTimeoutImpl(stableTimer);
@@ -61,11 +70,6 @@ export function createBroadcastifySupervisor(
           scheduleRestart();
         }
       });
-      state = "running";
-      stableTimer = setTimeoutImpl(() => {
-        stableTimer = undefined;
-        retryDelay = 1000;
-      }, 60000);
     } catch {
       child = undefined;
       onError(new Error("Broadcastify FFmpeg could not start"));
@@ -78,7 +82,7 @@ export function createBroadcastifySupervisor(
     get child() {
       return child;
     },
-    ready: () => state === "running" || state === "disabled",
+    ready: () => state === "disabled" || (state === "running" && Boolean(child?.stdin?.writable)),
     status: () => ({ state }),
     close: () => {
       if (closing) return closing;

@@ -15,11 +15,20 @@ export function createAudioTransmission({
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
 }) {
+  let sendFailure;
   const processor = createProcessor({
     rnnoise,
     rnnoiseMix,
     onProcessedPcm,
-    onPacket: (packet) => streamId && session.sendAudio(streamId, packet),
+    onPacket: (packet) => {
+      if (!streamId) return;
+      try {
+        session.sendAudio(streamId, packet);
+      } catch (error) {
+        sendFailure = error;
+        throw error;
+      }
+    },
     onError,
   });
   let pcm = Buffer.alloc(0);
@@ -47,7 +56,17 @@ export function createAudioTransmission({
       try {
         processor.write(frame);
       } catch (error) {
-        onError(error);
+        if (sendFailure === error && streamId) {
+          recovery.abandon(streamId);
+          streamId = undefined;
+          pcm = Buffer.alloc(0);
+          recovery.failed(error);
+          processor.finishTransmission();
+          stopAbandonedStreams()?.catch(onError);
+        } else {
+          onError(error);
+        }
+        sendFailure = undefined;
       }
     }
   }

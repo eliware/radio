@@ -1,5 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { getRuntimePaths } from "../../src/runtime-paths.mjs";
+import { knownSecrets } from "../../src/logging/error-details.mjs";
 import { createRadioRuntime } from "../../src/radio/runtime.mjs";
 
 const config = (serial, channel) => ({
@@ -107,4 +108,19 @@ test("closes Broadcastify streams and releases credentials if input creation thr
     }),
   ).rejects.toThrow("input construction failed");
   expect(closeBroadcast).toHaveBeenCalledTimes(2);
+});
+
+test("redacts credential-bearing configuration write failures", async () => {
+  const settings = [config("851", "PD"), config("853", "FD")];
+  await expect(
+    createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {
+        throw new Error(`write failed ${settings[0].PASSWORD}`);
+      },
+    }),
+  ).rejects.toThrow("write failed [REDACTED]");
+  expect(knownSecrets).not.toContain(settings[0].PASSWORD);
 });
