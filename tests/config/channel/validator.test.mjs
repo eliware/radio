@@ -1,6 +1,6 @@
 import { parseEnv } from "node:util";
 import { expect, test } from "@jest/globals";
-import { validateChannelSettings } from "../../src/config/channel-validator.mjs";
+import { validateChannelSettings } from "../../../src/config/channel/validator.mjs";
 
 const valid = {
   CHANNEL: "Police",
@@ -19,6 +19,12 @@ test("validates channel credentials and normalizes the UDP port", () => {
   expect(validateChannelSettings({ ...valid, UDP_PORT: "015581" })).toMatchObject({
     UDP_PORT: "15581",
     SDR_GAIN: "10",
+  });
+});
+
+test("leaves Broadcastify fields to the channel integration validator", () => {
+  expect(validateChannelSettings({ ...valid, BROADCASTIFY_ENABLED: "invalid" })).toMatchObject({
+    CHANNEL: "Police",
   });
 });
 

@@ -1,5 +1,6 @@
 import { jest, test, expect } from "@jest/globals";
 import { createAudioStreamRecovery } from "../../src/audio/stream-recovery.mjs";
+import { createAudioTransmission } from "../../src/audio/transmission.mjs";
 
 test("backs off failed stream starts, caps the delay, and resets after success", () => {
   let now = 0;
@@ -68,4 +69,44 @@ test("shares concurrent abandoned cleanup and reports stop errors", async () => 
   expect(onError).toHaveBeenCalledWith(error);
   expect(onComplete).toHaveBeenCalledTimes(1);
   expect(recovery.isStopping).toBe(false);
+});
+
+test("abandons a stream after a synchronous audio send failure", async () => {
+  let now = 0;
+  let starts = 0;
+  const onError = jest.fn();
+  const stopStream = jest.fn(async () => {});
+  const transmission = createAudioTransmission({
+    rnnoise: {
+      frameSize: 480,
+      createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),
+    },
+    now: () => now,
+    onError,
+    session: {
+      healthy: () => true,
+      startStream: async () => ++starts,
+      sendAudio: () => {
+        throw new Error("socket send failed");
+      },
+      stopStream,
+    },
+    createProcessor: ({ onPacket }) => ({
+      write: () => onPacket(Buffer.alloc(8)),
+      finishTransmission: () => onPacket(Buffer.alloc(8)),
+      close: () => {},
+    }),
+  });
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
+  expect(onError).toHaveBeenCalledWith(new Error("socket send failed"));
+  expect(stopStream).toHaveBeenCalledWith(1);
+  now = 999;
+  transmission.receive(Buffer.alloc(1280));
+  expect(starts).toBe(1);
+  now = 1000;
+  transmission.receive(Buffer.alloc(1280));
+  for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
+  expect(starts).toBe(2);
+  await transmission.close();
 });

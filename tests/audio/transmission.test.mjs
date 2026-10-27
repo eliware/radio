@@ -1,6 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
 import { createAudioTransmission } from "../../src/audio/transmission.mjs";
-import { synchronousAudioSendFailureTest } from "../../test-fixtures/audio-send-failure.mjs";
 
 const rnnoise = {
   frameSize: 480,
@@ -144,9 +143,6 @@ test("reports processor write failures", async () => {
   expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: "processor failed" }));
   await transmission.close();
 });
-
-test("abandons a stream after a synchronous audio send failure", () =>
-  synchronousAudioSendFailureTest(expect));
 
 test("keeps one stream open when new audio arrives during startup", async () => {
   jest.useFakeTimers();

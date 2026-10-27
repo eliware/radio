@@ -1,21 +1,20 @@
 import { createPcmQueue } from "./pcm-queue.mjs";
-import { createBroadcastifySupervisor } from "./supervisor.mjs";
 
 const maxBufferedBytes = 96000;
 export function createBroadcastifyStream(settings, options = {}) {
   const {
     onError = () => {},
+    getChild = () => undefined,
     setIntervalImpl = setInterval,
     clearIntervalImpl = clearInterval,
   } = options;
   let keepalive,
     reportedBackpressure = false;
   let closed = false;
-  const supervisor = createBroadcastifySupervisor(settings, options);
   const queue = createPcmQueue(onError);
 
   function send(pcm) {
-    const child = supervisor.child;
+    const child = getChild();
     if (!child?.stdin?.writable) return;
     try {
       child.stdin.write(pcm);
@@ -29,7 +28,7 @@ export function createBroadcastifyStream(settings, options = {}) {
   }
 
   function pump() {
-    const child = supervisor.child;
+    const child = getChild();
     if (!child) {
       queue.clear();
       return;
@@ -46,13 +45,10 @@ export function createBroadcastifyStream(settings, options = {}) {
   if (settings.enabled) keepalive = setIntervalImpl(pump, 10);
   return {
     write,
-    ready: supervisor.ready,
-    status: supervisor.status,
-    close: async () => {
+    close: () => {
       closed = true;
       if (keepalive) clearIntervalImpl(keepalive);
       queue.clear();
-      await supervisor.close();
     },
   };
 }

@@ -19,7 +19,7 @@ function makeStream(child, options = {}) {
   const stream = createBroadcastifyStream(
     { enabled: true },
     {
-      spawnProcess: () => child,
+      getChild: () => child,
       setIntervalImpl: (callback) => ((pump = callback), 1),
       clearIntervalImpl: jest.fn(),
       ...options,
@@ -55,33 +55,39 @@ test("sends silence continuously and preserves queued PCM during pipe pressure",
   pump();
   expect(child.stdin.write).toHaveBeenCalledTimes(3);
   stream.close();
-  expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+  expect(child.stdin.write).toHaveBeenCalledTimes(3);
 });
 
 test("keeps disabled output inert", () => {
   const stream = createBroadcastifyStream({ enabled: false });
   stream.write(Buffer.alloc(960));
-  expect(stream.ready()).toBe(true);
-  expect(stream.status()).toEqual({ state: "disabled" });
   stream.close();
 });
 
-test("clears queued PCM while FFmpeg is restarting", () => {
-  const child = childProcess();
-  const timers = [];
-  let starts = 0;
-  const { stream, pump } = makeStream(child, {
-    spawnProcess: () => {
-      starts += 1;
-      if (starts === 1) throw new Error("not installed");
-      return child;
+test("clears queued audio if no child is available", () => {
+  let pump;
+  const stream = createBroadcastifyStream(
+    { enabled: true },
+    {
+      setIntervalImpl: (callback) => ((pump = callback), 1),
+      clearIntervalImpl: jest.fn(),
     },
-    setTimeoutImpl: (callback) => (timers.push(callback), timers.length),
+  );
+  stream.write(Buffer.alloc(960, 1));
+  pump();
+  stream.close();
+});
+
+test("drops queued PCM while the FFmpeg child is unavailable", () => {
+  const child = childProcess();
+  let available;
+  const { stream, pump } = makeStream(child, {
+    getChild: () => available,
   });
   const audio = Buffer.alloc(960, 1);
   stream.write(audio);
   pump();
-  timers[0]();
+  available = child;
   pump();
   expect(child.stdin.write).toHaveBeenCalledWith(Buffer.alloc(960));
   expect(child.stdin.write).not.toHaveBeenCalledWith(audio);
@@ -90,10 +96,10 @@ test("clears queued PCM while FFmpeg is restarting", () => {
 
 test("uses the default error callback when an enabled stream write throws", () => {
   const child = childProcess();
+  const { stream, pump } = makeStream(child);
   child.stdin.write.mockImplementation(() => {
     throw new Error("pipe error");
   });
-  const { stream, pump } = makeStream(child);
   stream.write(Buffer.alloc(960));
   expect(() => pump()).not.toThrow();
   stream.close();
