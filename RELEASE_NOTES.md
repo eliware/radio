@@ -1,5 +1,12 @@
 # Release Notes
 
+## 15.1.0 — 2026-11-03
+
+### Changed
+
+- Updated `@eliware/test` to 15.1.0 and `ws` to 8.22.1.
+- Updated transitive dependencies to their latest compatible versions.
+
 ## 15.0.1 — 2026-10-27
 
 ### Added
