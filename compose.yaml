@@ -5,11 +5,10 @@ services:
       dockerfile: docker/radio/Dockerfile
     environment:
       RADIO_HEALTH_PORT: 1400
-      RADIO_CONFIG_DIR: /run/radio
+      RADIO_CONFIG_FILES: '["/run/radio/channel.env"]'
       LOG_LEVEL: info
     volumes:
-      - ./.env.pd:/run/radio/police.env:ro
-      - ./.env.fd:/run/radio/fire.env:ro
+      - ./.env:/run/radio/channel.env:ro
     devices:
       - /dev/bus/usb:/dev/bus/usb
     ports:

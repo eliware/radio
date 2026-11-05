@@ -20,8 +20,8 @@ test tone. This confirms that the channel can receive audio from the bridge.
 ## Requirements
 
 - A Linux host with Docker Engine and the Docker Compose plugin.
-- Two RTL-SDR dongles with distinct serial numbers, connected to the host.
-- Antennas and valid frequency and CTCSS settings for both channels.
+- At least one RTL-SDR dongle, connected to the host.
+- An antenna and valid frequency and CTCSS settings for each channel.
 - A Zello account and production signing credentials for each destination channel.
 - Network access from the container to Zello using TLS WebSockets.
 
@@ -33,24 +33,27 @@ account and provides technical connection values.
 
 ## Setup
 
-From the repository root, create one channel file for Police and one for Fire:
+The default Compose setup runs one channel. From the repository root, create its configuration:
 
 ```sh
-cp .env.example .env.pd
-cp .env.example .env.fd
-chmod 600 .env.pd .env.fd
+cp .env.example .env
+chmod 600 .env
 ```
 
-Edit each file with the matching channel account and SDR settings. Set distinct `SDR_SERIAL` and
-`UDP_PORT` values.
+Fill in its Zello account and SDR settings, then start the bridge with `docker compose up -d --build`.
+To run more channels, create a private configuration file for each one and add its container path to
+`RADIO_CONFIG_FILES` in an ignored `compose.override.yaml`. Compose loads that override automatically.
+For each new config, map its file read-only under `/run/radio` and include its container path in the
+JSON array. Give channels on a shared dongle the same `SDR_SERIAL`, and use a unique
+`UDP_PORT` for each channel.
 
-`SDR_GAIN` controls that dongle's tuner amplification in dB. Begin at a low value. Use a larger
-value only when reception requires it. Too much amplification can overload the receiver. Use the
-exact Zello channel name and production `ISSUER` and `PRIVATE_KEY` from its developer credentials.
-Do not use a sample development token.
+Channels with the same `SDR_SERIAL` share a dongle when their frequencies span at most 2.4 MHz. They
+must use the same `SDR_GAIN` and distinct `UDP_PORT` values. `SDR_GAIN` controls the dongle's tuner
+amplification in dB. Begin at a low value. Use the exact Zello channel name and production `ISSUER`
+and `PRIVATE_KEY` from its developer credentials. Do not use a sample development token.
 
-Keep both files private. They contain account passwords and private signing keys. Git and the Docker
-build context exclude them. Compose mounts them read-only inside the container.
+Keep all channel files private. They contain account passwords and private signing keys. Git and the
+Docker build context exclude them. Compose mounts them read-only inside the container.
 
 Start the bridge and check its state:
 
@@ -70,27 +73,27 @@ play after the Zello sessions connect.
 Each channel file is a Node.js dotenv-style file. Keep PEM keys inside quoted multiline values.
 The table lists the app's validation rules.
 
-| Key                     | Required   | Meaning and accepted values                                       |
-| ----------------------- | ---------- | ----------------------------------------------------------------- |
-| `CHANNEL`               | Yes        | Exact destination channel name in Zello.                          |
-| `USERNAME`              | Yes        | Zello account name for this channel.                              |
-| `PASSWORD`              | Yes        | Password for the Zello account.                                   |
-| `ISSUER`                | Yes        | Issuer value for the production signing key.                      |
-| `PRIVATE_KEY`           | Yes        | PEM private key used to sign a production JWT.                    |
-| `SDR_SERIAL`            | Yes        | RTL-SDR serial number. Each channel file needs a unique value.    |
-| `SDR_GAIN`              | No         | Tuner amplification from 0 to 49.6 dB. Default: 10.               |
-| `FREQUENCY_MHZ`         | Yes        | Receive frequency from 24 through 1766 MHz.                       |
-| `CTCSS_HZ`              | Yes        | CTCSS tone from 67 through 254.1 Hz.                              |
-| `TONE`                  | Yes        | Startup test tone from 200 through 3000 Hz.                       |
-| `UDP_PORT`              | Yes        | Unique local UDP number from 1024 through 65535.                  |
-| `RNNOISE`               | No         | Percent of noise-reduced audio from 0 through 100. Default: 100.  |
-| `BROADCASTIFY_ENABLED`  | No         | Set to `true` after approval and configuration. Default: `false`. |
-| `BROADCASTIFY_HOST`     | If enabled | Icecast source host from the Broadcastify Technicals page.        |
-| `BROADCASTIFY_PORT`     | If enabled | Icecast source port from the Broadcastify Technicals page.        |
-| `BROADCASTIFY_MOUNT`    | If enabled | Icecast source path, with its leading slash.                      |
-| `BROADCASTIFY_PASSWORD` | If enabled | Source password from the Broadcastify Technicals page.            |
-| `BROADCASTIFY_NAME`     | No         | Optional stream title. Defaults to `CHANNEL`.                     |
-| `PUBLIC_KEY`            | No         | Reference value only. The app does not read it.                   |
+| Key                     | Required   | Meaning and accepted values                                         |
+| ----------------------- | ---------- | ------------------------------------------------------------------- |
+| `CHANNEL`               | Yes        | Exact destination channel name in Zello.                            |
+| `USERNAME`              | Yes        | Zello account name for this channel.                                |
+| `PASSWORD`              | Yes        | Password for the Zello account.                                     |
+| `ISSUER`                | Yes        | Issuer value for the production signing key.                        |
+| `PRIVATE_KEY`           | Yes        | PEM private key used to sign a production JWT.                      |
+| `SDR_SERIAL`            | Yes        | RTL-SDR serial number. Channels may share a dongle at 2.4 MHz span. |
+| `SDR_GAIN`              | No         | Tuner amplification from 0 to 49.6 dB. Default: 10.                 |
+| `FREQUENCY_MHZ`         | Yes        | Receive frequency from 24 through 1766 MHz.                         |
+| `CTCSS_HZ`              | Yes        | CTCSS tone from 67 through 254.1 Hz.                                |
+| `TONE`                  | Yes        | Startup test tone from 200 through 3000 Hz.                         |
+| `UDP_PORT`              | Yes        | Unique local UDP number from 1024 through 65535.                    |
+| `RNNOISE`               | No         | Percent of noise-reduced audio from 0 through 100. Default: 100.    |
+| `BROADCASTIFY_ENABLED`  | No         | Set to `true` after approval and configuration. Default: `false`.   |
+| `BROADCASTIFY_HOST`     | If enabled | Icecast source host from the Broadcastify Technicals page.          |
+| `BROADCASTIFY_PORT`     | If enabled | Icecast source port from the Broadcastify Technicals page.          |
+| `BROADCASTIFY_MOUNT`    | If enabled | Icecast source path, with its leading slash.                        |
+| `BROADCASTIFY_PASSWORD` | If enabled | Source password from the Broadcastify Technicals page.              |
+| `BROADCASTIFY_NAME`     | No         | Optional stream title. Defaults to `CHANNEL`.                       |
+| `PUBLIC_KEY`            | No         | Reference value only. The app does not read it.                     |
 
 `RNNOISE` must be an integer from 0 through 100. `RNNOISE=100` sends fully noise-reduced audio.
 `RNNOISE=80` combines 80% noise-reduced audio with 20% unprocessed audio. `RNNOISE=0` sends the
@@ -113,15 +116,15 @@ The `PUBLIC_KEY` entry in the template is for reference and is not needed at run
 These environment variables configure the application process or its HTTP status endpoint. They
 are separate from the per-channel settings above.
 
-| Variable            | Required | Meaning and default                                                                        |
-| ------------------- | -------- | ------------------------------------------------------------------------------------------ |
-| `RADIO_CONFIG_DIR`  | No       | Directory containing `police.env` and `fire.env`. Defaults to the app's runtime directory. |
-| `RADIO_HEALTH_PORT` | No       | HTTP status port. Defaults to `1400`.                                                      |
-| `LOG_LEVEL`         | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.                    |
+| Variable             | Required | Meaning and default                                                      |
+| -------------------- | -------- | ------------------------------------------------------------------------ |
+| `RADIO_CONFIG_FILES` | No       | JSON array of channel configuration paths. Defaults to the app's `.env`. |
+| `RADIO_HEALTH_PORT`  | No       | HTTP status port. Defaults to `1400`.                                    |
+| `LOG_LEVEL`          | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.  |
 
 ## Startup and recovery
 
-Node.js starts as the container's PID 1 process. It validates both channel files before opening
+Node.js starts as the container's PID 1 process. It validates every channel file before opening
 connections, writes an RTLSDR-Airband configuration to a temporary directory, and opens one UDP
 listener for each configured `UDP_PORT`.
 
@@ -175,7 +178,7 @@ period before counting failures.
 docker compose up -d --build   # Build the image and start or update the app.
 docker compose ps              # Show container and health state.
 docker compose logs -f radio   # Follow app and RTLSDR-Airband logs.
-docker compose restart radio   # Restart after editing .env.pd or .env.fd.
+docker compose restart radio   # Restart after editing channel configuration files.
 docker compose down            # Stop and remove the container.
 ```
 
@@ -189,9 +192,11 @@ change it, edit `LOG_LEVEL` in `compose.yaml` and run `docker compose up -d`. A 
 does not apply changed Compose environment values. Logs use timestamped JSON for Node.js messages.
 RTLSDR-Airband writes its own text messages to the same container log.
 
-`RADIO_CONFIG_DIR` is optional. When set, it must contain `police.env` and `fire.env`, in that order.
-The runtime requires exactly these two channel configuration files.
-When unset, the application reads `.env.pd` and `.env.fd` beside its runtime module.
+Set `RADIO_CONFIG_FILES` to a JSON array of channel config paths. If unset, the app reads `.env` beside
+its runtime module. Each channel needs a unique UDP port.
+
+Channels sharing an SDR serial must set `SDR_GAIN` identically. Their frequencies can span at most
+2.4 MHz. The app centers the dongle between their lowest and highest frequencies.
 `RADIO_HEALTH_PORT` is optional and defaults to `1400`.
 
 The status listener binds to all container interfaces.
@@ -203,7 +208,7 @@ mapping and health-check URL in `compose.yaml`.
 | Symptom                              | Checks                                                                                                                                 |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                                   |
-| Receiver waits for SDR devices       | Confirm both dongles are connected and their serials match `SDR_SERIAL`. Check USB access on the Linux host.                           |
+| Receiver waits for SDR devices       | Confirm each configured dongle is connected and its serial matches `SDR_SERIAL`. Check USB access on the Linux host.                   |
 | A Zello channel stays offline        | Check the channel name, username, password, issuer, private key, and container network access.                                         |
 | A Broadcastify stream stays offline  | Check the enable flag, host, port, source path, password, and FFmpeg state in `/health`.                                               |
 | A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and the UDP port pair. Confirm Airband logs show output to the configured number. |
@@ -215,4 +220,4 @@ initialization messages. If a device does not initialize, `/ready` stays unsucce
 receiver recovers.
 
 The logger redacts credential fields and known channel-file values. Inspect logs before sharing
-them. Do not share `.env.pd` or `.env.fd`.
+them. Do not share `.env` or other channel configuration files.

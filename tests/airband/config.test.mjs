@@ -24,13 +24,22 @@ test("creates one RTLSDR-Airband process config with separate UDP feeds", () => 
     { ...base, SDR_SERIAL: "853", UDP_PORT: "15422", SDR_GAIN: undefined },
   ]);
   expect(defaults).toContain("gain = 10");
-  expect(() => createAirbandConfig([base])).toThrow("distinct SDR serials");
-  expect(() => createAirbandConfig([base, base])).toThrow("distinct SDR serials");
+  expect(createAirbandConfig([base])).toContain('serial = "851"');
+  expect(() => createAirbandConfig([base, base])).toThrow("distinct UDP ports");
   expect(() => createAirbandConfig([base, { ...base, SDR_SERIAL: "853" }])).toThrow(
     "distinct UDP ports",
   );
-  expect(() => validateAirbandChannels([base, base])).toThrow("distinct SDR serials");
-  expect(() => validateAirbandChannels([base, { ...base, SDR_SERIAL: "853" }])).toThrow(
-    "distinct UDP ports",
+  expect(() => validateAirbandChannels([])).toThrow("At least one channel is required");
+  const sharedDongle = createAirbandConfig([
+    base,
+    { ...base, UDP_PORT: "15422", FREQUENCY_MHZ: "155.5" },
+  ]);
+  expect(sharedDongle.match(/serial = "851"/g)).toHaveLength(1);
+  expect(sharedDongle).toContain("freq = 155.5000");
+  expect(() =>
+    createAirbandConfig([base, { ...base, UDP_PORT: "15422", FREQUENCY_MHZ: "157.6" }]),
+  ).toThrow("2.4 MHz band");
+  expect(() => createAirbandConfig([base, { ...base, UDP_PORT: "15422", SDR_GAIN: "15" }])).toThrow(
+    "same SDR_GAIN",
   );
 });

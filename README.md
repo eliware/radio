@@ -27,13 +27,14 @@ post-filter Broadcastify Classic feeds.
 
 ## Requirements
 
-Runtime needs a Linux Docker Compose host, two RTL-SDR dongles, and production Zello credentials.
+Runtime needs a Linux Docker Compose host, at least one RTL-SDR dongle, and production Zello credentials.
 Use Node.js 26 or later and npm for local development.
 
 ## Setup
 
-Run `npm ci` for development. For deployment, copy `.env.example` to `.env.pd` and `.env.fd`, set
-both files to mode `600`, and fill in channel values. See [the setup guide](docs/radio-server.md).
+Run `npm ci` for development. For deployment, copy `.env.example` to `.env` and set it to mode `600`.
+Fill in channel values. The default Compose setup runs one channel. More channel files can be listed
+with `RADIO_CONFIG_FILES`. See [the setup guide](docs/radio-server.md).
 
 ## Usage
 
@@ -58,8 +59,8 @@ sessions, and any enabled Broadcastify processes are active.
 
 ## Security
 
-Keep `.env.pd` and `.env.fd` private. They hold account passwords, signing keys, and optional
-Broadcastify credentials. Git and the Docker build context exclude these files.
+Keep `.env` and other channel configuration files private. They hold account passwords,
+signing keys, and optional Broadcastify credentials. Git and the Docker build context exclude them.
 
 ## Configuration
 

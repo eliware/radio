@@ -4,6 +4,7 @@ coverage
 artifacts
 .env
 .env.*
+/compose.override.yaml
 tests
 test-fixtures
 AGENTS.md

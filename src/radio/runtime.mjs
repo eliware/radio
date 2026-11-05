@@ -50,8 +50,8 @@ export async function createRadioRuntime({
   onError,
   log = logger,
 }) {
-  if (configPaths.length !== 2)
-    throw new Error("Exactly two channel configuration files are required");
+  if (configPaths.length === 0)
+    throw new Error("At least one channel configuration file is required");
   const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
   validateAirbandChannels(configs);
   const releaseSecrets = rememberSecrets(configs);

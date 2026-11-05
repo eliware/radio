@@ -15,6 +15,10 @@ const config = (serial, channel) => ({
   CTCSS_HZ: "77.0",
   TONE: "1000",
 });
+const silentLog = Object.fromEntries(
+  ["debug", "info", "warn", "error"].map((level) => [level, () => {}]),
+);
+
 test("builds one runtime from channel files and combines component readiness", async () => {
   jest.useFakeTimers();
   let receiverReady = false;
@@ -74,7 +78,7 @@ test("builds one runtime from channel files and combines component readiness", a
 
 test("rejects incomplete channel configuration before starting services", async () => {
   await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow(
-    "Exactly two channel configuration files are required",
+    "At least one channel configuration file is required",
   );
   const paths = [];
   await expect(
@@ -88,33 +92,51 @@ test("rejects incomplete channel configuration before starting services", async 
   expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
 });
 
-test("requires exactly two configured channels", async () => {
-  const loadConfig = jest.fn(async () => config("851", "PD"));
-  await expect(createRadioRuntime({ configPaths: ["pd"], loadConfig })).rejects.toThrow(
-    "Exactly two channel configuration files are required",
-  );
-  expect(loadConfig).not.toHaveBeenCalled();
+test("runs with one configured channel", async () => {
+  const loadedConfig = config("851", "PD");
+  const runtime = await createRadioRuntime({
+    configPaths: ["pd"],
+    loadConfig: async () => loadedConfig,
+    loadNoise: async () => ({ frameSize: 480 }),
+    writeConfig: async () => {},
+    chmodConfig: async () => {},
+    makeSession: () => ({ healthy: () => true, close: () => {} }),
+    makeInput: () => ({ listen: async () => {}, close: async () => {} }),
+    makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
+    makeAirbandSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
+    log: silentLog,
+  });
+  expect(runtime.ready()).toBe(true);
+  await runtime.close();
 });
 
-test("rejects duplicate receiver serials and UDP ports before startup", async () => {
+test("allows shared dongles and rejects duplicate UDP ports before startup", async () => {
   const settings = [config("851", "PD"), config("851", "FD")];
   const loadNoise = jest.fn(async () => ({ frameSize: 480 }));
+  settings[1] = { ...settings[1], FREQUENCY_MHZ: "155.5", UDP_PORT: "15422" };
+  const runtime = await createRadioRuntime({
+    configPaths: ["pd", "fd"],
+    loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
+    loadNoise,
+    writeConfig: async () => {},
+    chmodConfig: async () => {},
+    makeSession: () => ({ healthy: () => true, close: () => {} }),
+    makeInput: () => ({ listen: async () => {}, close: async () => {} }),
+    makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
+    makeAirbandSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
+    log: silentLog,
+  });
+  expect(runtime.ready()).toBe(true);
+  await runtime.close();
+  loadNoise.mockClear();
+  settings[1] = { ...settings[1], UDP_PORT: settings[0].UDP_PORT };
   await expect(
     createRadioRuntime({
       configPaths: ["pd", "fd"],
       loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
       loadNoise,
     }),
-  ).rejects.toThrow("Two channels need distinct SDR serials");
-  expect(loadNoise).not.toHaveBeenCalled();
-  settings[1] = { ...settings[1], SDR_SERIAL: "853", UDP_PORT: settings[0].UDP_PORT };
-  await expect(
-    createRadioRuntime({
-      configPaths: ["pd", "fd"],
-      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
-      loadNoise,
-    }),
-  ).rejects.toThrow("Two channels need distinct UDP ports");
+  ).rejects.toThrow("distinct UDP ports");
   expect(loadNoise).not.toHaveBeenCalled();
 });
 

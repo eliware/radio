@@ -59,7 +59,7 @@ export function createAirbandSupervisor({
         error = undefined;
         state = "starting";
         log.info("Starting RTLSDR-Airband", {
-          serials: configs.map(({ SDR_SERIAL }) => SDR_SERIAL),
+          serials: [...new Set(configs.map(({ SDR_SERIAL }) => SDR_SERIAL))],
         });
         child = spawnProcess("rtl_airband", ["-F", "-e", "-c", configPath], {
           stdio: "inherit",
