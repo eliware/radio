@@ -1,7 +1,10 @@
-FROM node:26-alpine AS build
+FROM node:26-bookworm-slim AS build
 
-RUN apk add --no-cache bash build-base cmake git pkgconf linux-headers ca-certificates \
-    lame-dev libshout-dev libconfig-dev fftw-dev libusb-dev pulseaudio-dev soapy-sdr-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash build-essential cmake git pkg-config linux-libc-dev ca-certificates \
+    libmp3lame-dev libshout3-dev libconfig++-dev libfftw3-dev libusb-1.0-0-dev \
+    libpulse-dev libsoapysdr-dev \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 RUN git clone --depth 1 https://github.com/rtlsdrblog/rtl-sdr-blog.git rtl-sdr-blog \
@@ -16,11 +19,13 @@ RUN git clone --depth 1 --branch v5.1.0 \
       -DCMAKE_BUILD_TYPE=Release -DNFM=TRUE \
     && cmake --build airband-build -j4
 
-FROM node:26-alpine
+FROM node:26-bookworm-slim
 ENV NODE_ENV=production
-RUN apk add --no-cache ca-certificates ffmpeg libstdc++ lame-libs libshout libconfig++ \
-    fftw-single-libs libusb libpulse soapy-sdr
-COPY --from=build /usr/lib/librtlsdr.so* /usr/lib/
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates ffmpeg libstdc++6 libmp3lame0 libshout3 libconfig++9v5 \
+    libfftw3-single3 libusb-1.0-0 libpulse0 libsoapysdr0.8 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/lib/x86_64-linux-gnu/librtlsdr.so* /usr/lib/x86_64-linux-gnu/
 COPY --from=build /build/airband-build/src/rtl_airband /usr/local/bin/rtl_airband
 WORKDIR /app
 COPY package.json package-lock.json ./
