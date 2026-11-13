@@ -29,7 +29,7 @@
     "@eliware/resampler": "^15.1.0",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "opusscript": "^0.1.1",
-    "ws": "^8.22.1"
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@eliware/test": "^15.1.0"
