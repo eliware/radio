@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createFfmpegArgs } from "./ffmpeg-args.mjs";
 import { sanitizeBroadcastifyStderr } from "./stderr-sanitizer.mjs";
 import { createBroadcastifyRetry } from "./retry.mjs";
+import { createBroadcastifyStability } from "./stability.mjs";
 
 export function createBroadcastifySupervisor(
   settings,
@@ -16,6 +17,11 @@ export function createBroadcastifySupervisor(
   let state = settings.enabled ? "connecting" : "disabled";
   let closed = false;
   const retry = createBroadcastifyRetry({ setTimeoutImpl, clearTimeoutImpl });
+  const stability = createBroadcastifyStability({
+    onStable: () => retry.reset(),
+    setTimeoutImpl,
+    clearTimeoutImpl,
+  });
 
   function scheduleRestart() {
     if (closed) return;
@@ -47,11 +53,11 @@ export function createBroadcastifySupervisor(
       child.on("spawn", () => {
         if (closed || child !== process) return;
         state = "running";
-        retry.resetAfterStable(60000);
+        stability.observe(60000);
       });
       child.on("close", (code, signal) => {
         if (child !== process) return;
-        retry.cancelStableReset();
+        stability.cancel();
         child = undefined;
         if (!closed) {
           if (!failed) {
@@ -82,6 +88,7 @@ export function createBroadcastifySupervisor(
       if (closing) return closing;
       closed = true;
       retry.close();
+      stability.close();
       state = "closed";
       const process = child;
       if (!process) return Promise.resolve();

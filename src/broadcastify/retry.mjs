@@ -4,7 +4,7 @@ export function createBroadcastifyRetry({
   initialDelayMs = 1000,
   maxDelayMs = 300000,
 } = {}) {
-  let timer, stableTimer;
+  let timer;
   let delay = initialDelayMs;
   return {
     schedule(callback) {
@@ -18,23 +18,9 @@ export function createBroadcastifyRetry({
     reset() {
       delay = initialDelayMs;
     },
-    resetAfterStable(durationMs) {
-      if (stableTimer !== undefined) clearTimeoutImpl(stableTimer);
-      stableTimer = setTimeoutImpl(() => {
-        stableTimer = undefined;
-        delay = initialDelayMs;
-      }, durationMs);
-    },
-    cancelStableReset() {
-      if (stableTimer === undefined) return;
-      clearTimeoutImpl(stableTimer);
-      stableTimer = undefined;
-    },
     close() {
       if (timer !== undefined) clearTimeoutImpl(timer);
       timer = undefined;
-      if (stableTimer !== undefined) clearTimeoutImpl(stableTimer);
-      stableTimer = undefined;
     },
   };
 }
