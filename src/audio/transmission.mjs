@@ -85,10 +85,13 @@ export function createAudioTransmission({
     start.close();
     recovery.cancelAbandonedStop();
     if (start.isStarting) await start.wait();
-    await recovery.stopAbandoned();
-    await end(true);
-    await recovery.stopAbandoned();
-    sender.close();
+    try {
+      await recovery.stopAbandoned();
+      await end(true);
+      await recovery.stopAbandoned();
+    } finally {
+      sender.close();
+    }
   }
 
   return {

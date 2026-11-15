@@ -24,11 +24,13 @@ export async function createBroadcastifyRuntime(
           ready: supervisor.ready,
           status: supervisor.status,
           close: async () => {
-            try {
-              await stream.close();
-            } finally {
-              await supervisor.close();
-            }
+            const results = await Promise.allSettled(
+              [stream.close, supervisor.close].map((close) =>
+                Promise.resolve().then(() => close()),
+              ),
+            );
+            const failure = results.find(({ status }) => status === "rejected");
+            if (failure) throw failure.reason;
           },
         });
       } catch (error) {

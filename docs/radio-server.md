@@ -161,6 +161,7 @@ The two HTTP routes return JSON:
 - `GET /ready` returns HTTP 200 only when RTLSDR-Airband is running, every Zello session is
   online, each initial startup tone has completed, and each enabled Broadcastify FFmpeg process
   is running. It returns HTTP 503 during startup or recovery.
+- Requests using methods other than `GET` to `/health` or `/ready` return HTTP 405.
 - Other paths return HTTP 404.
 
 Both status responses are JSON and include the receiver state and each channel's connection state.

@@ -143,3 +143,21 @@ test("awaits cleanup of completed outputs when a later stream factory throws", a
   expect(closeStream).toHaveBeenCalledTimes(1);
   expect(closeSupervisor).toHaveBeenCalledTimes(2);
 });
+
+test("closes the supervisor even when stream cleanup rejects", async () => {
+  const closeStream = jest.fn(async () => {
+    throw new Error("stream close failed");
+  });
+  const closeSupervisor = jest.fn(async () => {});
+  const runtime = await createBroadcastifyRuntime(
+    [{ CHANNEL: "PD" }],
+    () => ({ write: () => {}, close: closeStream }),
+    undefined,
+    () => ({ child: undefined, ready: () => true, status: () => ({}), close: closeSupervisor }),
+  );
+
+  const results = await runtime.close();
+  expect(results[0]).toMatchObject({ status: "rejected" });
+  expect(results[0].reason).toMatchObject({ message: "stream close failed" });
+  expect(closeSupervisor).toHaveBeenCalledTimes(1);
+});

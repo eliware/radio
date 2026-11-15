@@ -17,6 +17,7 @@ export function createTransmissionStart({
       isClosed() ||
       hasStream() ||
       starting ||
+      retryTimer !== undefined ||
       recovery.isStopping ||
       !session.healthy() ||
       !recovery.canStart()
@@ -36,12 +37,10 @@ export function createTransmissionStart({
       .catch((error) => {
         finishTransmission();
         const retryDelay = recovery.failed(error);
-        if (retryTimer === undefined) {
-          retryTimer = setTimeoutImpl(() => {
-            retryTimer = undefined;
-            begin();
-          }, retryDelay);
-        }
+        retryTimer = setTimeoutImpl(() => {
+          retryTimer = undefined;
+          begin();
+        }, retryDelay);
       })
       .finally(() => {
         starting = undefined;

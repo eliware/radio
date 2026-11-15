@@ -81,6 +81,8 @@ test("retries a failed stream start and cancels pending retries on close", async
   const state = dependencies({ session: { healthy: () => true, startStream } });
   state.start.begin();
   await state.start.wait();
+  state.start.begin();
+  expect(startStream).toHaveBeenCalledTimes(1);
   state.timers[0].callback();
   await state.start.wait();
   expect(state.onStarted).toHaveBeenCalledWith(9);

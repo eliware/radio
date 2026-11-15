@@ -166,6 +166,31 @@ test("closes an active stream even when shutdown happens before the idle timeout
   await new Promise((resolve) => setImmediate(resolve));
   expect(processor.finishTransmission).toHaveBeenCalledTimes(1);
 });
+
+test("closes the processor when stream shutdown rejects", async () => {
+  const processor = { write: jest.fn(), finishTransmission: jest.fn(), close: jest.fn() };
+  const transmission = createAudioTransmission({
+    rnnoise,
+    onError: () => {
+      throw new Error("stop reporting failed");
+    },
+    createProcessor: () => processor,
+    session: {
+      healthy: () => true,
+      startStream: async () => 12,
+      sendAudio: () => {},
+      stopStream: async () => {
+        throw new Error("stream stop failed");
+      },
+    },
+  });
+  transmission.receive(Buffer.alloc(1280));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  await expect(transmission.close()).rejects.toThrow("stop reporting failed");
+  expect(processor.close).toHaveBeenCalledTimes(1);
+});
+
 test("drops a partial PCM frame between idle transmissions", async () => {
   let now = 0;
   let idleCallback;
@@ -201,6 +226,8 @@ test("drops a partial PCM frame between idle transmissions", async () => {
 test("backs off failed Zello starts and retains buffered audio for retry", async () => {
   let now = 0;
   let startCount = 0;
+  let timerId = 0;
+  const timers = new Map();
   const onError = jest.fn();
   const processor = {
     write: jest.fn(),
@@ -211,8 +238,12 @@ test("backs off failed Zello starts and retains buffered audio for retry", async
     rnnoise,
     now: () => now,
     onError,
-    setTimeoutImpl: () => 1,
-    clearTimeoutImpl: () => {},
+    setTimeoutImpl: (callback, delay) => {
+      timerId += 1;
+      timers.set(timerId, { callback, delay });
+      return timerId;
+    },
+    clearTimeoutImpl: (id) => timers.delete(id),
     createProcessor: () => processor,
     session: {
       healthy: () => true,
@@ -233,6 +264,9 @@ test("backs off failed Zello starts and retains buffered audio for retry", async
   expect(startCount).toBe(1);
   now = 1000;
   transmission.receive(Buffer.alloc(1280, 3));
+  const firstRetry = [...timers].find(([, timer]) => timer.delay === 1000);
+  timers.delete(firstRetry[0]);
+  firstRetry[1].callback();
   await new Promise((resolve) => setImmediate(resolve));
   expect(startCount).toBe(2);
   now = 2999;
@@ -240,6 +274,9 @@ test("backs off failed Zello starts and retains buffered audio for retry", async
   expect(startCount).toBe(2);
   now = 3000;
   transmission.receive(Buffer.alloc(1280, 5));
+  const secondRetry = [...timers].find(([, timer]) => timer.delay === 2000);
+  timers.delete(secondRetry[0]);
+  secondRetry[1].callback();
   await new Promise((resolve) => setImmediate(resolve));
   expect(startCount).toBe(3);
   expect(processor.write.mock.calls.map(([pcm]) => pcm)).toEqual([
