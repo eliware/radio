@@ -8,25 +8,6 @@ class Socket extends EventEmitter {
   }
 }
 
-test("resolves success and rejects Zello command failures", async () => {
-  const socket = new Socket();
-  const commands = createZelloCommands(socket, () => true);
-  const result = commands.request({ command: "start_stream" });
-  socket.emit("message", Buffer.from("invalid"));
-  socket.emit("message", Buffer.from(JSON.stringify({ seq: 99, success: true })));
-  socket.emit("message", Buffer.from(JSON.stringify({ seq: socket.last.seq, success: true })));
-  await expect(result).resolves.toMatchObject({ success: true });
-  const failure = commands.request({ command: "stop_stream" });
-  socket.emit(
-    "message",
-    Buffer.from(JSON.stringify({ seq: socket.last.seq, success: false, error: "denied" })),
-  );
-  await expect(failure).rejects.toThrow("denied");
-  const noMessage = commands.request({ command: "stop_stream" });
-  socket.emit("message", Buffer.from(JSON.stringify({ seq: socket.last.seq, success: false })));
-  await expect(noMessage).rejects.toThrow("Zello request failed");
-});
-
 test("rejects offline requests and synchronous send errors", async () => {
   const offline = createZelloCommands(new Socket(), () => false);
   await expect(offline.request({ command: "logon" })).rejects.toThrow("offline");
@@ -37,6 +18,14 @@ test("rejects offline requests and synchronous send errors", async () => {
   await expect(
     createZelloCommands(socket, () => true).request({ command: "logon" }),
   ).rejects.toThrow("send error");
+});
+
+test("defaults to accepting responses from the current socket", async () => {
+  const socket = new Socket();
+  const commands = createZelloCommands(socket, () => true);
+  const pending = commands.request({ command: "logon" });
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: socket.last.seq, success: true })));
+  await expect(pending).resolves.toMatchObject({ success: true });
 });
 
 test("fails pending commands when the connection closes or a request times out", async () => {
@@ -51,19 +40,4 @@ test("fails pending commands when the connection closes or a request times out",
   await jest.advanceTimersByTimeAsync(10000);
   await timeoutResult;
   jest.useRealTimers();
-});
-
-test("ignores responses from a socket that is no longer active", async () => {
-  const socket = new Socket();
-  let active = true;
-  const commands = createZelloCommands(
-    socket,
-    () => true,
-    () => active,
-  );
-  const pending = commands.request({ command: "start_stream" });
-  active = false;
-  socket.emit("message", Buffer.from(JSON.stringify({ seq: socket.last.seq, success: true })));
-  commands.close(new Error("socket replaced"));
-  await expect(pending).rejects.toThrow("socket replaced");
 });

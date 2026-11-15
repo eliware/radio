@@ -1,3 +1,5 @@
+import { listenForZelloResponses } from "./responses.mjs";
+
 export function createZelloCommands(socket, isOnline, isActive = () => true) {
   let sequence = 0;
   const waiting = new Map();
@@ -10,21 +12,7 @@ export function createZelloCommands(socket, isOnline, isActive = () => true) {
     waiting.clear();
   }
 
-  socket.on("message", (data) => {
-    if (!isActive()) return;
-    let response;
-    try {
-      response = JSON.parse(data.toString());
-    } catch {
-      return;
-    }
-    const pending = waiting.get(response.seq);
-    if (!pending) return;
-    waiting.delete(response.seq);
-    clearTimeout(pending.timer);
-    if (response.success) pending.resolve(response);
-    else pending.reject(new Error(response.error ?? "Zello request failed"));
-  });
+  listenForZelloResponses(socket, isActive, waiting);
 
   function request(command, allowOffline = false) {
     if (!allowOffline && !isOnline()) return Promise.reject(new Error("Zello is offline"));

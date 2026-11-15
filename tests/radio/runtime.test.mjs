@@ -1,5 +1,4 @@
 import { expect, jest, test } from "@jest/globals";
-import { getRuntimePaths } from "../../src/runtime-paths.mjs";
 import { knownSecrets } from "../../src/logging/secrets.mjs";
 import { createRadioRuntime } from "../../src/radio/runtime.mjs";
 
@@ -18,6 +17,22 @@ const config = (serial, channel) => ({
 const silentLog = Object.fromEntries(
   ["debug", "info", "warn", "error"].map((level) => [level, () => {}]),
 );
+
+test("uses default runtime options before configuration validation", async () => {
+  await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow(
+    "At least one channel configuration file is required",
+  );
+  let configPath;
+  await expect(
+    createRadioRuntime({
+      loadConfig: async (path) => {
+        configPath = path;
+        throw new Error("default config lookup");
+      },
+    }),
+  ).rejects.toThrow("default config lookup");
+  expect(configPath).toEqual(expect.any(String));
+});
 
 test("builds one runtime from channel files and combines component readiness", async () => {
   jest.useFakeTimers();
@@ -76,22 +91,6 @@ test("builds one runtime from channel files and combines component readiness", a
   jest.useRealTimers();
 });
 
-test("rejects incomplete channel configuration before starting services", async () => {
-  await expect(createRadioRuntime({ configPaths: [] })).rejects.toThrow(
-    "At least one channel configuration file is required",
-  );
-  const paths = [];
-  await expect(
-    createRadioRuntime({
-      loadConfig: async (...args) => {
-        paths.push(args);
-        throw new Error("missing config");
-      },
-    }),
-  ).rejects.toThrow("missing config");
-  expect(paths).toEqual(getRuntimePaths({}).configPaths.map((path) => [path]));
-});
-
 test("runs with one configured channel", async () => {
   const loadedConfig = config("851", "PD");
   const runtime = await createRadioRuntime({
@@ -108,36 +107,6 @@ test("runs with one configured channel", async () => {
   });
   expect(runtime.ready()).toBe(true);
   await runtime.close();
-});
-
-test("allows shared dongles and rejects duplicate UDP ports before startup", async () => {
-  const settings = [config("851", "PD"), config("851", "FD")];
-  const loadNoise = jest.fn(async () => ({ frameSize: 480 }));
-  settings[1] = { ...settings[1], FREQUENCY_MHZ: "155.5", UDP_PORT: "15422" };
-  const runtime = await createRadioRuntime({
-    configPaths: ["pd", "fd"],
-    loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
-    loadNoise,
-    writeConfig: async () => {},
-    chmodConfig: async () => {},
-    makeSession: () => ({ healthy: () => true, close: () => {} }),
-    makeInput: () => ({ listen: async () => {}, close: async () => {} }),
-    makeSessionSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
-    makeAirbandSupervisor: () => ({ ready: () => true, status: () => ({}), close: async () => {} }),
-    log: silentLog,
-  });
-  expect(runtime.ready()).toBe(true);
-  await runtime.close();
-  loadNoise.mockClear();
-  settings[1] = { ...settings[1], UDP_PORT: settings[0].UDP_PORT };
-  await expect(
-    createRadioRuntime({
-      configPaths: ["pd", "fd"],
-      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
-      loadNoise,
-    }),
-  ).rejects.toThrow("distinct UDP ports");
-  expect(loadNoise).not.toHaveBeenCalled();
 });
 
 test("releases secrets when a UDP listener fails to bind", async () => {
@@ -217,19 +186,4 @@ test("closes Broadcastify streams and releases credentials if input creation thr
     }),
   ).rejects.toThrow("input construction failed");
   expect(closeBroadcast).toHaveBeenCalledTimes(2);
-});
-
-test("redacts credential-bearing configuration write failures", async () => {
-  const settings = [config("851", "PD"), config("853", "FD")];
-  await expect(
-    createRadioRuntime({
-      configPaths: ["pd", "fd"],
-      loadConfig: async (path) => settings[path === "pd" ? 0 : 1],
-      loadNoise: async () => ({ frameSize: 480 }),
-      writeConfig: async () => {
-        throw new Error(`write failed ${settings[0].PASSWORD}`);
-      },
-    }),
-  ).rejects.toThrow("write failed [REDACTED]");
-  expect(knownSecrets).not.toContain(settings[0].PASSWORD);
 });

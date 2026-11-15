@@ -1,11 +1,8 @@
 import { chmod, writeFile } from "node:fs/promises";
-import { errorDetails } from "../logging/error-details.mjs";
 import { redactError, releaseSecretsAndRedact } from "../logging/safe-error.mjs";
-import { rememberSecrets } from "../logging/secrets.mjs";
 import { logger } from "../logger.mjs";
 import { getRuntimePaths } from "../runtime-paths.mjs";
 import { createAirbandSupervisor } from "../airband-supervisor.mjs";
-import { createAirbandConfig, validateAirbandChannels } from "../airband/config.mjs";
 import { createAudioInput } from "../audio/input.mjs";
 import { loadRnnoise } from "../audio/rnnoise.mjs";
 import { loadChannelConfig } from "../channel-config.mjs";
@@ -15,6 +12,7 @@ import { createBroadcastifyStream } from "../broadcastify/stream.mjs";
 import { createBroadcastifyRuntime } from "../broadcastify/runtime.mjs";
 import { createRadioChannels, createRadioInputs } from "./channels.mjs";
 import { closeRadioResources } from "./resources.mjs";
+import { prepareRadioConfiguration } from "./configuration.mjs";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
@@ -37,22 +35,16 @@ export async function createRadioRuntime({
   onError,
   log = logger,
 }) {
-  if (configPaths.length === 0)
-    throw new Error("At least one channel configuration file is required");
-  const configs = await Promise.all(configPaths.map((configPath) => loadConfig(configPath)));
-  validateAirbandChannels(configs);
-  const releaseSecrets = rememberSecrets(configs);
-  let rnnoise;
-  let reportError;
-  try {
-    rnnoise = await loadNoise();
-    reportError =
-      onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
-    await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
-    await chmodConfig(airbandPath, 0o600);
-  } catch (error) {
-    throw releaseSecretsAndRedact(releaseSecrets, error);
-  }
+  const { configs, rnnoise, releaseSecrets, reportError } = await prepareRadioConfiguration({
+    configPaths,
+    airbandPath,
+    loadConfig,
+    loadNoise,
+    writeConfig,
+    chmodConfig,
+    onError,
+    log,
+  });
   let broadcastify;
   let inputs = [];
   let channels;
