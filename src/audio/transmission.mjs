@@ -2,6 +2,7 @@ import { createNoisePipeline } from "./noise-pipeline.mjs";
 import { createAudioStreamRecovery } from "./transmission/recovery.mjs";
 import { createTransmissionIdle } from "./transmission/idle.mjs";
 import { createTransmissionBuffer } from "./transmission/buffer.mjs";
+import { createTransmissionSendRecovery } from "./transmission/send-recovery.mjs";
 export function createAudioTransmission({
   session,
   rnnoise,
@@ -14,25 +15,10 @@ export function createAudioTransmission({
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
 }) {
-  let sendFailure;
-  const processor = createProcessor({
-    rnnoise,
-    rnnoiseMix,
-    onProcessedPcm,
-    onPacket: (packet) => {
-      if (!streamId) return;
-      try {
-        session.sendAudio(streamId, packet);
-      } catch (error) {
-        sendFailure = error;
-        throw error;
-      }
-    },
-    onError,
-  });
   let streamId,
     starting,
-    closed = false;
+    closed = false,
+    processor;
   const buffer = createTransmissionBuffer();
   const recovery = createAudioStreamRecovery({
     session,
@@ -51,6 +37,25 @@ export function createAudioTransmission({
     end,
     onError,
   });
+  const sendRecovery = createTransmissionSendRecovery({
+    session,
+    recovery,
+    buffer,
+    finishTransmission: () => processor.finishTransmission(),
+    onAbandon: () => {
+      streamId = undefined;
+    },
+    onError,
+  });
+  processor = createProcessor({
+    rnnoise,
+    rnnoiseMix,
+    onProcessedPcm,
+    onPacket: (packet) => {
+      if (streamId) sendRecovery.send(streamId, packet);
+    },
+    onError,
+  });
   function flush() {
     if (!session.healthy()) {
       if (streamId) recovery.abandon(streamId);
@@ -65,17 +70,7 @@ export function createAudioTransmission({
     try {
       buffer.flush((frame) => processor.write(frame));
     } catch (error) {
-      if (sendFailure === error && streamId) {
-        recovery.abandon(streamId);
-        streamId = undefined;
-        buffer.clear();
-        recovery.failed(error);
-        processor.finishTransmission();
-        recovery.stopAbandoned()?.catch(onError);
-      } else {
-        onError(error);
-      }
-      sendFailure = undefined;
+      if (!sendRecovery.handleFailure(error, streamId)) onError(error);
     }
   }
   function begin() {

@@ -1,7 +1,8 @@
 import { createPcmFrameBuffer } from "./denoiser/buffer.mjs";
+import { createDenoiserState } from "./denoiser/state.mjs";
 
 export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = () => {} }) {
-  let state = rnnoise.createDenoiseState();
+  const state = createDenoiserState({ rnnoise, onError });
   const frameBytes = rnnoise.frameSize * 2;
   const buffer = createPcmFrameBuffer(frameBytes);
   let closed = false;
@@ -27,21 +28,7 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
         buffer.write(chunk, processFrame);
       } catch (error) {
         buffer.reset();
-        let resetError;
-        try {
-          state.destroy();
-        } catch (cause) {
-          resetError = cause;
-        }
-        try {
-          state = rnnoise.createDenoiseState();
-        } catch (cause) {
-          resetError ??= cause;
-        }
-        if (resetError) {
-          onError(resetError);
-        }
-        onError(error);
+        state.recover(error);
       }
     },
     reset() {
@@ -50,12 +37,7 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
     close() {
       if (closed) return;
       closed = true;
-      try {
-        state.destroy();
-      } catch (error) {
-        onError(error);
-        throw error;
-      }
+      state.close();
     },
   };
 }
