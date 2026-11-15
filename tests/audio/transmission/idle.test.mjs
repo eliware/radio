@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createTransmissionIdle } from "../../src/audio/transmission-idle.mjs";
+import { createTransmissionIdle } from "../../../src/audio/transmission/idle.mjs";
 
 test("ends transmission after idle time and reports end failures", async () => {
   let now = 0;

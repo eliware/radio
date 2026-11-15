@@ -1,6 +1,7 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
 import { createAudioStreamRecovery } from "./stream-recovery.mjs";
-import { createTransmissionIdle } from "./transmission-idle.mjs";
+import { createTransmissionIdle } from "./transmission/idle.mjs";
+import { createTransmissionBuffer } from "./transmission/buffer.mjs";
 export function createAudioTransmission({
   session,
   rnnoise,
@@ -31,8 +32,8 @@ export function createAudioTransmission({
   });
   let streamId,
     starting,
-    closed = false,
-    pcm = Buffer.alloc(0);
+    closed = false;
+  const buffer = createTransmissionBuffer();
   const recovery = createAudioStreamRecovery({
     session,
     onError,
@@ -40,7 +41,7 @@ export function createAudioTransmission({
     setTimeoutImpl,
     clearTimeoutImpl,
     isClosed: () => closed,
-    onAbandonedStopped: () => !closed && pcm.length && begin(),
+    onAbandonedStopped: () => !closed && buffer.length && begin(),
   });
   const idle = createTransmissionIdle({
     idleMs,
@@ -54,30 +55,27 @@ export function createAudioTransmission({
     if (!session.healthy()) {
       if (streamId) recovery.abandon(streamId);
       streamId = undefined;
-      pcm = Buffer.alloc(0);
+      buffer.clear();
       processor.finishTransmission();
       idle.reset();
       recovery.stopAbandoned()?.catch(onError);
       return;
     }
-    while (streamId && pcm.length >= 320 * 4) {
-      const frame = pcm.subarray(0, 320 * 4);
-      pcm = pcm.subarray(320 * 4);
-      try {
-        processor.write(frame);
-      } catch (error) {
-        if (sendFailure === error && streamId) {
-          recovery.abandon(streamId);
-          streamId = undefined;
-          pcm = Buffer.alloc(0);
-          recovery.failed(error);
-          processor.finishTransmission();
-          recovery.stopAbandoned()?.catch(onError);
-        } else {
-          onError(error);
-        }
-        sendFailure = undefined;
+    if (!streamId) return;
+    try {
+      buffer.flush((frame) => processor.write(frame));
+    } catch (error) {
+      if (sendFailure === error && streamId) {
+        recovery.abandon(streamId);
+        streamId = undefined;
+        buffer.clear();
+        recovery.failed(error);
+        processor.finishTransmission();
+        recovery.stopAbandoned()?.catch(onError);
+      } else {
+        onError(error);
       }
+      sendFailure = undefined;
     }
   }
   function begin() {
@@ -103,7 +101,7 @@ export function createAudioTransmission({
         flush();
       })
       .catch((error) => {
-        pcm = Buffer.alloc(0);
+        buffer.clear();
         processor.finishTransmission();
         recovery.failed(error);
       })
@@ -115,9 +113,9 @@ export function createAudioTransmission({
     if ((closed && !force) || !idle.isIdle(force)) return;
     if (starting) await starting;
     if (!idle.isIdle(force)) return;
-    pcm = pcm.subarray(0, pcm.length - (pcm.length % (320 * 4)));
+    buffer.keepCompleteFrames();
     flush();
-    pcm = Buffer.alloc(0);
+    buffer.clear();
     processor.finishTransmission();
     const id = streamId;
     streamId = undefined;
@@ -140,7 +138,7 @@ export function createAudioTransmission({
       if (closed || !session.healthy()) return;
       idle.recordActivity();
       if (!recovery.canStart()) return;
-      pcm = Buffer.concat([pcm, packet]);
+      buffer.append(packet);
       begin();
       flush();
       idle.schedule();

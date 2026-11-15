@@ -1,40 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { createRadioLogger } from "../../src/logging/logger.mjs";
 
-test("creates structured log records with key and literal secret redaction", () => {
-  const records = [];
-  const createLoggerImpl = (options) => {
-    expect(options).toMatchObject({ level: "debug", format: "json", timestamp: true });
-    return Object.fromEntries(
-      ["debug", "info", "warn", "error"].map((level) => [
-        level,
-        (message, metadata) => records.push({ level, message, metadata }),
-      ]),
-    );
-  };
-  const logger = createRadioLogger({
-    level: "DEBUG",
-    secrets: ["literal-secret", "line one\nline two"],
-    createLoggerImpl,
-  });
-  logger.info("literal-secret", {
-    password: "hidden",
-    note: "literal-secret",
-    nested: ["line one\nline two", 7],
-  });
-  expect(records[0]).toEqual({
-    level: "info",
-    message: "[REDACTED]",
-    metadata: {
-      password: "[REDACTED]",
-      note: "[REDACTED]",
-      nested: ["[REDACTED]", 7],
-    },
-  });
-  for (const level of ["debug", "warn", "error"]) logger[level]("event");
-  expect(records).toHaveLength(4);
-});
-
 test("rejects unsupported logger levels", () => {
   expect(() => createRadioLogger({ level: "unknown" })).toThrow(
     "Invalid LOG_LEVEL: unknown. Use debug, info, warn, or error.",

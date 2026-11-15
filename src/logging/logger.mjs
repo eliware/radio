@@ -1,17 +1,7 @@
-import { createLogger, defaultPolicy } from "@eliware/common";
+import { createLogger } from "@eliware/common";
 import { knownSecrets } from "./secrets.mjs";
-import { redactErrorText } from "./error-details.mjs";
-import { sanitizeMetadata } from "./metadata.mjs";
+import { createSanitizedLogger, privateKeys } from "./log-record.mjs";
 
-const privateKeys = [
-  ...defaultPolicy.keys,
-  "password",
-  "private_key",
-  "public_key",
-  "issuer",
-  "auth_token",
-  "api_key",
-];
 const supportedLevels = new Set(["debug", "info", "warn", "error"]);
 
 function validateLevel(level) {
@@ -32,15 +22,5 @@ export function createRadioLogger({
     timestamp: true,
     keys: privateKeys,
   });
-  const methods = ["debug", "info", "warn", "error"];
-  return Object.fromEntries(
-    methods.map((method) => [
-      method,
-      (message, metadata = {}) =>
-        base[method](
-          redactErrorText(message, secrets),
-          sanitizeMetadata(metadata, secrets, privateKeys),
-        ),
-    ]),
-  );
+  return createSanitizedLogger(base, secrets);
 }
