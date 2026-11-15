@@ -8,12 +8,15 @@ export function createZelloLifecycle(WebSocketImpl) {
     connection?.close();
     online = false;
     let current;
+    const isCurrent = () => connection?.socket === current?.socket;
     current = createZelloConnection(WebSocketImpl, {
       onClose: () => {
+        if (!isCurrent()) return;
         online = false;
         onDisconnected(new Error("Zello socket closed"));
       },
       onError: (error) => {
+        if (!isCurrent()) return;
         online = false;
         onDisconnected(error);
       },
@@ -22,7 +25,7 @@ export function createZelloLifecycle(WebSocketImpl) {
     return {
       socket: current.socket,
       opening: current.opening,
-      isCurrent: () => connection?.socket === current.socket,
+      isCurrent,
       setOnline: () => {
         if (connection?.socket === current.socket) online = true;
       },

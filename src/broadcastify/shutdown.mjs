@@ -14,8 +14,13 @@ export function shutdownBroadcastifyProcess(
     };
     process.once("close", finish);
     timer = setTimeoutImpl(() => {
-      process.kill("SIGKILL");
-      finish();
+      try {
+        process.kill("SIGKILL");
+      } catch {
+        // The process may have exited before the close event was delivered.
+      } finally {
+        finish();
+      }
     }, timeoutMs);
     process.stdin.end();
     process.kill("SIGTERM");

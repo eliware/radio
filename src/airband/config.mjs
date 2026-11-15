@@ -7,9 +7,14 @@ export function validateAirbandChannels(channels) {
   const groups = Map.groupBy(channels, ({ SDR_SERIAL }) => SDR_SERIAL);
   for (const [serial, group] of groups) {
     const frequencies = group.map(({ FREQUENCY_MHZ }) => Number(FREQUENCY_MHZ));
+    if (frequencies.some((frequency) => !Number.isFinite(frequency)))
+      throw new Error(`Channels on SDR ${serial} need finite frequencies`);
     if (Math.max(...frequencies) - Math.min(...frequencies) > 2.4)
       throw new Error(`Channels on SDR ${serial} must fit within a 2.4 MHz band`);
-    const gains = new Set(group.map(({ SDR_GAIN }) => Number(SDR_GAIN ?? 10)));
+    const gainValues = group.map(({ SDR_GAIN }) => Number(SDR_GAIN ?? 10));
+    if (gainValues.some((gain) => !Number.isFinite(gain)))
+      throw new Error(`Channels on SDR ${serial} need finite SDR_GAIN values`);
+    const gains = new Set(gainValues);
     if (gains.size > 1) throw new Error(`Channels on SDR ${serial} must use the same SDR_GAIN`);
   }
   return channels;

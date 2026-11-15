@@ -60,3 +60,33 @@ test("replacement invalidates stale connection state and supports empty shutdown
   await expect(empty.waitForClose()).resolves.toBeUndefined();
   empty.close();
 });
+
+test("ignores close and error events from a replaced socket", async () => {
+  class DelayedSocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = 0;
+
+    close() {}
+  }
+
+  const lifecycle = createZelloLifecycle(DelayedSocket);
+  const oldDisconnected = jest.fn();
+  const old = lifecycle.connect(oldDisconnected);
+  old.socket.readyState = DelayedSocket.OPEN;
+  old.socket.emit("open");
+  await old.opening;
+  const current = lifecycle.connect(jest.fn());
+  current.socket.readyState = DelayedSocket.OPEN;
+  current.socket.emit("open");
+  await current.opening;
+  current.setOnline();
+
+  old.socket.readyState = DelayedSocket.CLOSED;
+  old.socket.emit("close");
+  old.socket.emit("error", new Error("stale socket error"));
+
+  expect(oldDisconnected).not.toHaveBeenCalled();
+  expect(lifecycle.healthy()).toBe(true);
+  lifecycle.close();
+});

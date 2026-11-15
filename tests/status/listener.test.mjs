@@ -4,9 +4,17 @@ import { startStatusListener } from "../../src/status/listener.mjs";
 
 function fakeServer(fail = false) {
   const server = new EventEmitter();
+  server.listening = false;
   server.listen = jest.fn((_port, _host, ready) => {
     if (fail) server.emit("error", new Error("listen failed"));
-    else ready();
+    else {
+      server.listening = true;
+      ready();
+    }
+  });
+  server.close = jest.fn((callback) => {
+    server.listening = false;
+    callback?.();
   });
   return server;
 }
@@ -42,6 +50,7 @@ test("rejects when the status listener cannot bind", async () => {
     ),
   ).rejects.toThrow("listen failed");
   expect(onServer).toHaveBeenCalledWith(server);
+  expect(server.close).toHaveBeenCalledTimes(1);
 });
 
 test("uses the environment port and default status server factory", async () => {

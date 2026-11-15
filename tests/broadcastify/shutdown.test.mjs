@@ -57,3 +57,17 @@ test("force kills a process that does not close after SIGTERM", async () => {
   expect(process.kill).toHaveBeenNthCalledWith(1, "SIGTERM");
   expect(process.kill).toHaveBeenNthCalledWith(2, "SIGKILL");
 });
+
+test("resolves shutdown when force killing an exited process throws", async () => {
+  const timers = [];
+  const process = childProcess((signal) => {
+    if (signal === "SIGKILL") throw new Error("process already exited");
+  });
+  const closing = shutdownBroadcastifyProcess(process, {
+    setTimeoutImpl: (callback) => (timers.push(callback), 1),
+    clearTimeoutImpl: jest.fn(),
+    timeoutMs: 1,
+  });
+  timers[0]();
+  await expect(closing).resolves.toBeUndefined();
+});

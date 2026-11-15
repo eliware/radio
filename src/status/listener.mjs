@@ -12,10 +12,15 @@ export async function startStatusListener(
   const listenPort = Number(port);
   const server = createServer(runtime, log);
   onServer(server);
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(listenPort, "0.0.0.0", resolve);
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(listenPort, "0.0.0.0", resolve);
+    });
+  } catch (error) {
+    server.close(() => {});
+    throw error;
+  }
   log.info("Radio service started", { port: listenPort });
   return server;
 }

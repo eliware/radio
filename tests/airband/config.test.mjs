@@ -26,3 +26,12 @@ test("creates config only after channel validation", () => {
   expect(createAirbandConfig([base])).toMatch(/^fft_size = 256;/);
   expect(() => createAirbandConfig([base, base])).toThrow("distinct UDP ports");
 });
+
+test("rejects non-finite channel frequencies and tuner gains", () => {
+  expect(() => validateAirbandChannels([{ ...base, FREQUENCY_MHZ: "NaN" }])).toThrow(
+    "finite frequencies",
+  );
+  expect(() => createAirbandConfig([{ ...base, SDR_GAIN: "Infinity" }])).toThrow(
+    "finite SDR_GAIN values",
+  );
+});
