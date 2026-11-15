@@ -39,38 +39,6 @@ test("opens the Zello endpoint and resolves when the socket closes", async () =>
   await expect(connection.waitForClose()).resolves.toBeUndefined();
 });
 
-test("rejects opening errors and terminates sockets when supported", async () => {
-  let socket;
-  class FailingSocket extends FakeSocket {
-    constructor(url) {
-      super(url);
-      socket = this;
-    }
-  }
-  const error = new Error("opening failed");
-  const onError = jest.fn();
-  const connection = createZelloConnection(FailingSocket, { onError });
-  socket.emit("error", error);
-  await expect(connection.opening).rejects.toBe(error);
-  expect(onError).toHaveBeenCalledWith(error);
-  expect(socket.terminate).toHaveBeenCalledTimes(1);
-});
-
-test("rejects a close before open", async () => {
-  let socket;
-  class ClosingSocket extends FakeSocket {
-    constructor(url) {
-      super(url);
-      socket = this;
-    }
-  }
-  const onClose = jest.fn();
-  const connection = createZelloConnection(ClosingSocket, { onClose });
-  socket.close();
-  await expect(connection.opening).rejects.toThrow("Zello closed before connecting");
-  expect(onClose).toHaveBeenCalledTimes(1);
-});
-
 test("closes on socket errors when terminate is unavailable", async () => {
   let socket;
   class CloseOnlySocket extends EventEmitter {

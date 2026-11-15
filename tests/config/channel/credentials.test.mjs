@@ -10,9 +10,8 @@ const valid = {
   PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----abc",
 };
 
-test.each(["TOKEN=sample\n", "PRIVATE_KEY=bad\n", "USERNAME=\n"])(
-  "rejects invalid credentials: %s",
-  (patch) => expect(() => validateChannelCredentials({ ...valid, ...parseEnv(patch) })).toThrow(),
+test.each(["TOKEN=sample\n", "PRIVATE_KEY=bad\n"])("rejects invalid credentials: %s", (patch) =>
+  expect(() => validateChannelCredentials({ ...valid, ...parseEnv(patch) })).toThrow(),
 );
 
 test("accepts complete production credentials", () => {

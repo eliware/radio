@@ -1,3 +1,5 @@
+import { createZelloOpening } from "./opening.mjs";
+
 const URL = "wss://zello.io/ws";
 
 export function createZelloConnection(
@@ -5,29 +7,7 @@ export function createZelloConnection(
   { onClose = () => {}, onError = () => {} } = {},
 ) {
   const socket = new WebSocketImpl(URL);
-  const opening = new Promise((resolve, reject) => {
-    const cleanup = () => {
-      socket.off("open", opened);
-      socket.off("error", failed);
-      socket.off("close", closed);
-    };
-    const opened = () => {
-      cleanup();
-      resolve();
-    };
-    const failed = (error) => {
-      cleanup();
-      reject(error);
-    };
-    const closed = () => {
-      cleanup();
-      reject(new Error("Zello closed before connecting"));
-    };
-    socket.once("open", opened);
-    socket.once("error", failed);
-    socket.once("close", closed);
-  });
-  const closed = new Promise((resolve) => socket.once("close", resolve));
+  const opening = createZelloOpening(socket, WebSocketImpl.CLOSED);
 
   let closingAfterError = false;
   socket.on("close", onClose);
@@ -41,8 +21,8 @@ export function createZelloConnection(
 
   return {
     socket,
-    opening,
+    opening: opening.opening,
     close: () => socket.close(),
-    waitForClose: () => (socket.readyState === WebSocketImpl.CLOSED ? Promise.resolve() : closed),
+    waitForClose: opening.waitForClose,
   };
 }

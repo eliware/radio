@@ -1,4 +1,6 @@
-const frameBytes = 320 * 4;
+import { FRAME_SAMPLES } from "../codec.mjs";
+
+const frameBytes = (FRAME_SAMPLES / 3) * 4;
 
 export function createTransmissionBuffer() {
   let pcm = Buffer.alloc(0);
