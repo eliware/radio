@@ -47,13 +47,16 @@ export async function createRadioRuntime({
   });
   let broadcastify;
   let inputs = [];
-  let channels;
+  let channels = [];
   try {
     broadcastify = await createBroadcastifyRuntime(configs, makeBroadcastify, reportError);
     channels = createRadioChannels(configs, makeSession);
     inputs = createRadioInputs(channels, broadcastify.outputs, rnnoise, makeInput, reportError);
   } catch (error) {
-    await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
+    await closeRadioResources(
+      { inputs, broadcastify, sessions: { close: async () => closeChannelSessions(channels) } },
+      { ignoreErrors: true },
+    );
     throw releaseSecretsAndRedact(releaseSecrets, error);
   }
   const listening = await Promise.allSettled(
@@ -63,7 +66,10 @@ export async function createRadioRuntime({
   if (listenFailure) {
     const safeError = redactError(listenFailure.reason);
     try {
-      await closeRadioResources({ inputs, broadcastify }, { ignoreErrors: true });
+      await closeRadioResources(
+        { inputs, broadcastify, sessions: { close: async () => closeChannelSessions(channels) } },
+        { ignoreErrors: true },
+      );
     } finally {
       releaseSecrets();
     }
@@ -102,4 +108,8 @@ export async function createRadioRuntime({
       broadcastify: broadcastify.status(channels),
     }),
   };
+}
+
+async function closeChannelSessions(channels) {
+  await Promise.allSettled(channels.map(({ session }) => session.close()));
 }

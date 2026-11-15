@@ -1,19 +1,23 @@
 const maxBufferedBytes = 96000;
 
 export function createBroadcastifyPipePump({ getChild, nextPcm, onError }) {
-  let reportedBackpressure = false;
+  let reportedPipeIssue = false;
 
   return () => {
     const child = getChild();
     if (!child) return false;
     if (child.stdin.writableLength > maxBufferedBytes) {
-      if (!reportedBackpressure) onError(new Error("Broadcastify audio pipe is congested"));
-      reportedBackpressure = true;
+      if (!reportedPipeIssue) onError(new Error("Broadcastify audio pipe is congested"));
+      reportedPipeIssue = true;
       return true;
     }
-    reportedBackpressure = false;
+    if (!child.stdin.writable) {
+      if (!reportedPipeIssue) onError(new Error("Broadcastify audio pipe is not writable"));
+      reportedPipeIssue = true;
+      return true;
+    }
+    reportedPipeIssue = false;
     const pcm = nextPcm();
-    if (!child.stdin.writable) return true;
     try {
       child.stdin.write(pcm);
     } catch {

@@ -192,6 +192,7 @@ test("closes all input listeners when one bind fails", async () => {
   let count = 0;
   const closeInput = jest.fn(async () => {});
   const closeBroadcastify = jest.fn(async () => {});
+  const closeSession = jest.fn(async () => {});
   const runtime = createRadioRuntime({
     configPaths: ["pd", "fd"],
     loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
@@ -206,7 +207,7 @@ test("closes all input listeners when one bind fails", async () => {
       },
       close: closeInput,
     }),
-    makeSession: () => ({ healthy: () => true, close: async () => {} }),
+    makeSession: () => ({ healthy: () => true, close: closeSession }),
     makeBroadcastify: () => ({ close: closeBroadcastify, ready: () => true, status: () => ({}) }),
     makeSessionSupervisor: () => {
       throw new Error("supervisors must not start before listeners bind");
@@ -215,6 +216,7 @@ test("closes all input listeners when one bind fails", async () => {
   await expect(runtime).rejects.toThrow("UDP port is busy");
   expect(closeInput).toHaveBeenCalledTimes(2);
   expect(closeBroadcastify).toHaveBeenCalledTimes(2);
+  expect(closeSession).toHaveBeenCalledTimes(2);
 });
 
 test("closes constructed resources after supervisor startup failures", async () => {

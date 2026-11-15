@@ -13,6 +13,7 @@ export function createAudioStreamRecovery({
   let abandonedIds = [];
   let stopping;
   let abandonedStopTimer;
+  let pendingStopComplete;
 
   function scheduleAbandonedStop() {
     if (
@@ -24,22 +25,44 @@ export function createAudioStreamRecovery({
       return;
     abandonedStopTimer = setTimeoutImpl(() => {
       abandonedStopTimer = undefined;
-      stopAbandoned();
+      return stopAbandoned(pendingStopComplete);
     }, 1000);
   }
 
   function stopAbandoned(onComplete = onAbandonedStopped) {
     if (stopping || abandonedIds.length === 0) return stopping;
+    const complete = onComplete;
+    pendingStopComplete = complete;
     if (!session.healthy()) {
       scheduleAbandonedStop();
       return stopping;
     }
     const ids = abandonedIds;
     abandonedIds = [];
-    stopping = Promise.all(ids.map((id) => session.stopStream(id).catch(onError))).finally(() => {
-      stopping = undefined;
-      onComplete();
-    });
+    let shouldComplete = false;
+    stopping = Promise.all(
+      ids.map(async (id) => {
+        try {
+          await session.stopStream(id);
+          return undefined;
+        } catch (error) {
+          onError(error);
+          return id;
+        }
+      }),
+    )
+      .then((remainingIds) => {
+        abandonedIds = [...remainingIds.filter((id) => id !== undefined), ...abandonedIds];
+        if (abandonedIds.length > 0) scheduleAbandonedStop();
+        else shouldComplete = true;
+      })
+      .finally(() => {
+        stopping = undefined;
+        if (shouldComplete) {
+          pendingStopComplete = undefined;
+          complete();
+        }
+      });
     return stopping;
   }
 

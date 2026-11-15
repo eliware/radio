@@ -93,8 +93,39 @@ test("shares concurrent abandoned cleanup and reports stop errors", async () => 
   finishStop.reject(error);
   await stopping;
   expect(onError).toHaveBeenCalledWith(error);
-  expect(onComplete).toHaveBeenCalledTimes(1);
+  expect(onComplete).not.toHaveBeenCalled();
   expect(recovery.isStopping).toBe(false);
+});
+
+test("retries failed abandoned stream stops before reporting completion", async () => {
+  let retry;
+  let attempts = 0;
+  const onError = jest.fn();
+  const onComplete = jest.fn();
+  const recovery = createAudioStreamRecovery({
+    session: {
+      healthy: () => true,
+      stopStream: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("stop failed");
+      },
+    },
+    onError,
+    now: () => 0,
+    setTimeoutImpl: (callback) => ((retry = callback), 1),
+    clearTimeoutImpl: jest.fn(),
+  });
+  recovery.abandon(10);
+
+  await recovery.stopAbandoned(onComplete);
+  expect(onError).toHaveBeenCalledWith(new Error("stop failed"));
+  expect(onComplete).not.toHaveBeenCalled();
+  expect(recovery.hasAbandoned).toBe(true);
+
+  await retry();
+  expect(attempts).toBe(2);
+  expect(recovery.hasAbandoned).toBe(false);
+  expect(onComplete).toHaveBeenCalledTimes(1);
 });
 
 test("stops a disconnected stream after reconnect, even without later audio", async () => {
@@ -152,7 +183,7 @@ test("stops a disconnected stream after reconnect, even without later audio", as
   for (let attempt = 0; attempt < 5; attempt += 1) await Promise.resolve();
   healthy = true;
   transmission.receive(Buffer.alloc(1280));
-  for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
+  for (let attempt = 0; attempt < 20; attempt += 1) await Promise.resolve();
   expect(events.slice(-2)).toEqual(["stop:2", "start:3"]);
   await transmission.close();
 });
