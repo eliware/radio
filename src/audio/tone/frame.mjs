@@ -1,4 +1,4 @@
-import { FRAME_SAMPLES, SAMPLE_RATE } from "./codec.mjs";
+import { FRAME_SAMPLES, SAMPLE_RATE } from "../codec.mjs";
 
 export function createToneFrame(frequency, frameIndex) {
   const frame = Buffer.alloc(FRAME_SAMPLES * 4);

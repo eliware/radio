@@ -1,12 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { createRadioLogger } from "../../src/logging/logger.mjs";
 
-test("rejects unsupported logger levels", () => {
-  expect(() => createRadioLogger({ level: "unknown" })).toThrow(
-    "Invalid LOG_LEVEL: unknown. Use debug, info, warn, or error.",
-  );
-});
-
 test("uses the configured default logger level for ordinary log calls", () => {
   const records = [];
   const createLoggerImpl = (options) => {

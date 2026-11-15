@@ -1,5 +1,5 @@
 import { createEncoder, encodeFloatFrame } from "./audio/encoder.mjs";
-import { createToneFrame } from "./audio/tone-frame.mjs";
+import { createToneFrame } from "./audio/tone/frame.mjs";
 
 export async function sendStartupTone(
   session,
