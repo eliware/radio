@@ -12,19 +12,19 @@ function dependencies(overrides = {}) {
     stopOrAbandon: jest.fn(),
   };
   const buffer = { clear: jest.fn() };
-  const processor = { finishTransmission: jest.fn() };
+  const finishTransmission = jest.fn();
   const options = {
     session: { healthy: () => true, startStream: jest.fn(async () => 7) },
     recovery,
     buffer,
-    processor,
+    finishTransmission,
     isClosed: () => false,
     hasStream: () => false,
     onStarted: jest.fn(),
     onError: jest.fn(),
     ...overrides,
   };
-  return { start: createTransmissionStart(options), ...options };
+  return { start: createTransmissionStart(options), ...options, processor: { finishTransmission } };
 }
 
 test("starts a stream and reports its id after startup completes", async () => {

@@ -2,7 +2,7 @@ export function createTransmissionStart({
   session,
   recovery,
   buffer,
-  processor,
+  finishTransmission,
   isClosed,
   hasStream,
   onStarted,
@@ -33,7 +33,7 @@ export function createTransmissionStart({
       })
       .catch((error) => {
         buffer.clear();
-        processor.finishTransmission();
+        finishTransmission();
         recovery.failed(error);
       })
       .finally(() => {

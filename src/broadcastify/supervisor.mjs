@@ -3,6 +3,7 @@ import { createFfmpegArgs } from "./ffmpeg-args.mjs";
 import { createBroadcastifyRetry } from "./retry.mjs";
 import { createBroadcastifyStability } from "./stability.mjs";
 import { monitorBroadcastifyProcess } from "./process.mjs";
+import { shutdownBroadcastifyProcess } from "./shutdown.mjs";
 
 export function createBroadcastifySupervisor(
   settings,
@@ -78,21 +79,12 @@ export function createBroadcastifySupervisor(
       state = "closed";
       const process = child;
       if (!process) return Promise.resolve();
-      closing = new Promise((resolve) => {
-        let forceTimer;
-        const finish = () => {
-          clearTimeoutImpl(forceTimer);
-          process.off("close", finish);
-          child = undefined;
-          resolve();
-        };
-        process.once("close", finish);
-        forceTimer = setTimeoutImpl(() => {
-          process.kill("SIGKILL");
-          finish();
-        }, 5000);
-        process.stdin.end();
-        process.kill("SIGTERM");
+      closing = shutdownBroadcastifyProcess(process, {
+        setTimeoutImpl,
+        clearTimeoutImpl,
+        timeoutMs: 5000,
+      }).then(() => {
+        child = undefined;
       });
       return closing;
     },
