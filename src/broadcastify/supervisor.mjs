@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { createFfmpegArgs } from "./ffmpeg-args.mjs";
-import { sanitizeBroadcastifyStderr } from "./stderr-sanitizer.mjs";
 import { createBroadcastifyRetry } from "./retry.mjs";
 import { createBroadcastifyStability } from "./stability.mjs";
+import { monitorBroadcastifyProcess } from "./process.mjs";
 
 export function createBroadcastifySupervisor(
   settings,
@@ -33,42 +33,28 @@ export function createBroadcastifySupervisor(
     if (closed || !settings.enabled) return;
     state = "connecting";
     try {
-      let failed = false;
-      let stderr = "";
       child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
         stdio: ["pipe", "ignore", "pipe"],
       });
       const process = child;
-      child.stderr?.on("data", (chunk) => {
-        stderr = `${stderr}${chunk}`.slice(-4096);
-      });
-      child.stdin.on("error", () => onError(new Error("Broadcastify audio pipe failed")));
-      child.on("error", () => {
-        if (closed || child !== process) return;
-        failed = true;
-        state = "retrying";
-        onError(new Error("Broadcastify FFmpeg process failed"));
-        scheduleRestart();
-      });
-      child.on("spawn", () => {
-        if (closed || child !== process) return;
-        state = "running";
-        stability.observe(60000);
-      });
-      child.on("close", (code, signal) => {
-        if (child !== process) return;
-        stability.cancel();
-        child = undefined;
-        if (!closed) {
-          if (!failed) {
-            const detail = sanitizeBroadcastifyStderr(stderr, settings);
-            const reason = [code === null ? signal : `code ${code}`, detail]
-              .filter(Boolean)
-              .join(": ");
-            onError(new Error(`${settings.name || "Broadcastify"} FFmpeg exited (${reason})`));
-          }
+      monitorBroadcastifyProcess(child, {
+        settings,
+        isCurrent: () => child === process,
+        isClosed: () => closed,
+        onError,
+        onProcessError: () => {
+          state = "retrying";
           scheduleRestart();
-        }
+        },
+        onSpawn: () => {
+          state = "running";
+          stability.observe(60000);
+        },
+        onClose: () => {
+          stability.cancel();
+          child = undefined;
+          if (!closed) scheduleRestart();
+        },
       });
     } catch {
       child = undefined;
