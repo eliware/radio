@@ -79,9 +79,11 @@ export function createAudioStreamRecovery({
       retryDelay = 1000;
     },
     failed(error) {
-      retryAt = now() + retryDelay;
+      const delay = retryDelay;
+      retryAt = now() + delay;
       retryDelay = Math.min(retryDelay * 2, maxRetryDelayMs);
       onError(error);
+      return delay;
     },
     abandon(id) {
       abandonedIds.push(id);

@@ -71,3 +71,24 @@ test("resolves shutdown when force killing an exited process throws", async () =
   timers[0]();
   await expect(closing).resolves.toBeUndefined();
 });
+
+test("cleans up shutdown when ending stdin or sending SIGTERM throws", async () => {
+  const clearTimeoutImpl = jest.fn();
+  const timers = [];
+  const process = childProcess(() => {
+    throw new Error("process already exited");
+  });
+  process.stdin.end.mockImplementation(() => {
+    throw new Error("stdin already closed");
+  });
+  await expect(
+    shutdownBroadcastifyProcess(process, {
+      setTimeoutImpl: (callback) => (timers.push(callback), 1),
+      clearTimeoutImpl,
+      timeoutMs: 1,
+    }),
+  ).resolves.toBeUndefined();
+  expect(clearTimeoutImpl).toHaveBeenCalledWith(1);
+  expect(process.listenerCount("close")).toBe(0);
+  timers[0]();
+});

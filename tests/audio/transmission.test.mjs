@@ -198,7 +198,7 @@ test("drops a partial PCM frame between idle transmissions", async () => {
   expect(processor.finishTransmission).toHaveBeenCalledTimes(2);
   await transmission.close();
 });
-test("backs off failed Zello starts and discards stale audio", async () => {
+test("backs off failed Zello starts and retains buffered audio for retry", async () => {
   let now = 0;
   let startCount = 0;
   const onError = jest.fn();
@@ -242,8 +242,11 @@ test("backs off failed Zello starts and discards stale audio", async () => {
   transmission.receive(Buffer.alloc(1280, 5));
   await new Promise((resolve) => setImmediate(resolve));
   expect(startCount).toBe(3);
-  expect(processor.write).toHaveBeenCalledTimes(1);
-  expect(processor.write.mock.calls[0][0]).toEqual(Buffer.alloc(1280, 5));
+  expect(processor.write.mock.calls.map(([pcm]) => pcm)).toEqual([
+    Buffer.alloc(1280, 1),
+    Buffer.alloc(1280, 3),
+    Buffer.alloc(1280, 5),
+  ]);
   expect(processor.finishTransmission).toHaveBeenCalledTimes(2);
   expect(onError).toHaveBeenCalledTimes(2);
   await transmission.close();

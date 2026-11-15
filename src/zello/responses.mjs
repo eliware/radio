@@ -1,5 +1,5 @@
 export function listenForZelloResponses(socket, isActive, waiting) {
-  socket.on("message", (data) => {
+  const onMessage = (data) => {
     if (!isActive()) return;
     let response;
     try {
@@ -13,5 +13,7 @@ export function listenForZelloResponses(socket, isActive, waiting) {
     clearTimeout(pending.timer);
     if (response.success) pending.resolve(response);
     else pending.reject(new Error(response.error ?? "Zello request failed"));
-  });
+  };
+  socket.on("message", onMessage);
+  return () => socket.off("message", onMessage);
 }

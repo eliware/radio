@@ -1,14 +1,16 @@
 export function createTransmissionStart({
   session,
   recovery,
-  buffer,
   finishTransmission,
   isClosed,
   hasStream,
   onStarted,
   onError,
+  setTimeoutImpl,
+  clearTimeoutImpl,
 }) {
   let starting;
+  let retryTimer;
 
   function begin() {
     if (
@@ -32,9 +34,14 @@ export function createTransmissionStart({
         onStarted(id);
       })
       .catch((error) => {
-        buffer.clear();
         finishTransmission();
-        recovery.failed(error);
+        const retryDelay = recovery.failed(error);
+        if (retryTimer === undefined) {
+          retryTimer = setTimeoutImpl(() => {
+            retryTimer = undefined;
+            begin();
+          }, retryDelay);
+        }
       })
       .finally(() => {
         starting = undefined;
@@ -47,5 +54,10 @@ export function createTransmissionStart({
       return Boolean(starting);
     },
     wait: () => starting,
+    close() {
+      if (retryTimer === undefined) return;
+      clearTimeoutImpl(retryTimer);
+      retryTimer = undefined;
+    },
   };
 }

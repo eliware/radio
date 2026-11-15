@@ -41,3 +41,11 @@ test("fails pending commands when the connection closes or a request times out",
   await timeoutResult;
   jest.useRealTimers();
 });
+
+test("removes the response listener when commands close", () => {
+  const socket = new Socket();
+  const commands = createZelloCommands(socket, () => true);
+  expect(socket.listenerCount("message")).toBe(1);
+  commands.close(new Error("socket closed"));
+  expect(socket.listenerCount("message")).toBe(0);
+});

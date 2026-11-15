@@ -22,7 +22,15 @@ export function shutdownBroadcastifyProcess(
         finish();
       }
     }, timeoutMs);
-    process.stdin.end();
-    process.kill("SIGTERM");
+    try {
+      process.stdin.end();
+    } catch {
+      finish();
+    }
+    try {
+      process.kill("SIGTERM");
+    } catch {
+      finish();
+    }
   });
 }

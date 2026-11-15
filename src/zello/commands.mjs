@@ -12,7 +12,7 @@ export function createZelloCommands(socket, isOnline, isActive = () => true) {
     waiting.clear();
   }
 
-  listenForZelloResponses(socket, isActive, waiting);
+  const removeResponseListener = listenForZelloResponses(socket, isActive, waiting);
 
   function request(command, allowOffline = false) {
     if (!allowOffline && !isOnline()) return Promise.reject(new Error("Zello is offline"));
@@ -33,5 +33,11 @@ export function createZelloCommands(socket, isOnline, isActive = () => true) {
     });
   }
 
-  return { close: failAll, request };
+  return {
+    close(error) {
+      removeResponseListener();
+      failAll(error);
+    },
+    request,
+  };
 }

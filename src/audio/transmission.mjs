@@ -55,7 +55,6 @@ export function createAudioTransmission({
   start = createTransmissionStart({
     session,
     recovery,
-    buffer,
     finishTransmission: sender.finishTransmission,
     isClosed: () => closed,
     hasStream: () => Boolean(streamId),
@@ -64,6 +63,8 @@ export function createAudioTransmission({
       sender.flush();
     },
     onError,
+    setTimeoutImpl,
+    clearTimeoutImpl,
   });
   async function end(force = false) {
     if ((closed && !force) || !idle.isIdle(force)) return;
@@ -81,6 +82,7 @@ export function createAudioTransmission({
     if (closed) return;
     closed = true;
     idle.reset();
+    start.close();
     recovery.cancelAbandonedStop();
     if (start.isStarting) await start.wait();
     await recovery.stopAbandoned();
