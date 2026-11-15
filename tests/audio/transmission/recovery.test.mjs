@@ -1,6 +1,6 @@
-import { jest, test, expect } from "@jest/globals";
-import { createAudioStreamRecovery } from "../../src/audio/stream-recovery.mjs";
-import { createAudioTransmission } from "../../src/audio/transmission.mjs";
+import { expect, jest, test } from "@jest/globals";
+import { createAudioStreamRecovery } from "../../../src/audio/transmission/recovery.mjs";
+import { createAudioTransmission } from "../../../src/audio/transmission.mjs";
 
 test("backs off failed stream starts, caps the delay, and resets after success", () => {
   let now = 0;
@@ -75,6 +75,28 @@ test("retries abandoned stream cleanup without an explicit closed-state callback
   expect(stopped).toEqual([7]);
 });
 
+test("shares concurrent abandoned cleanup and reports stop errors", async () => {
+  let finishStop;
+  const onError = jest.fn();
+  const onComplete = jest.fn();
+  const session = {
+    healthy: () => true,
+    stopStream: () => new Promise((resolve, reject) => (finishStop = { resolve, reject })),
+  };
+  const recovery = createAudioStreamRecovery({ session, onError, now: () => 0 });
+  recovery.abandon(9);
+  const stopping = recovery.stopAbandoned(onComplete);
+  expect(recovery.isStopping).toBe(true);
+  expect(recovery.stopAbandoned()).toBe(stopping);
+
+  const error = new Error("stop failed");
+  finishStop.reject(error);
+  await stopping;
+  expect(onError).toHaveBeenCalledWith(error);
+  expect(onComplete).toHaveBeenCalledTimes(1);
+  expect(recovery.isStopping).toBe(false);
+});
+
 test("stops a disconnected stream after reconnect, even without later audio", async () => {
   let healthy = true;
   let now = 0;
@@ -133,28 +155,6 @@ test("stops a disconnected stream after reconnect, even without later audio", as
   for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
   expect(events.slice(-2)).toEqual(["stop:2", "start:3"]);
   await transmission.close();
-});
-
-test("shares concurrent abandoned cleanup and reports stop errors", async () => {
-  let finishStop;
-  const onError = jest.fn();
-  const onComplete = jest.fn();
-  const session = {
-    healthy: () => true,
-    stopStream: () => new Promise((resolve, reject) => (finishStop = { resolve, reject })),
-  };
-  const recovery = createAudioStreamRecovery({ session, onError, now: () => 0 });
-  recovery.abandon(9);
-  const stopping = recovery.stopAbandoned(onComplete);
-  expect(recovery.isStopping).toBe(true);
-  expect(recovery.stopAbandoned()).toBe(stopping);
-
-  const error = new Error("stop failed");
-  finishStop.reject(error);
-  await stopping;
-  expect(onError).toHaveBeenCalledWith(error);
-  expect(onComplete).toHaveBeenCalledTimes(1);
-  expect(recovery.isStopping).toBe(false);
 });
 
 test("abandons a stream after a synchronous audio send failure", async () => {

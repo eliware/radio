@@ -1,5 +1,5 @@
 import { createNoisePipeline } from "./noise-pipeline.mjs";
-import { createAudioStreamRecovery } from "./stream-recovery.mjs";
+import { createAudioStreamRecovery } from "./transmission/recovery.mjs";
 import { createTransmissionIdle } from "./transmission/idle.mjs";
 import { createTransmissionBuffer } from "./transmission/buffer.mjs";
 export function createAudioTransmission({

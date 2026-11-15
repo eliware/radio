@@ -1,11 +1,12 @@
+import { createPcmFrameBuffer } from "./denoiser/buffer.mjs";
+
 export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = () => {} }) {
   let state = rnnoise.createDenoiseState();
   const frameBytes = rnnoise.frameSize * 2;
-  const buffered = Buffer.alloc(frameBytes);
-  let bufferedBytes = 0;
+  const buffer = createPcmFrameBuffer(frameBytes);
   let closed = false;
 
-  function processFrame() {
+  function processFrame(buffered) {
     const original = Float32Array.from({ length: rnnoise.frameSize }, (_, i) =>
       buffered.readInt16LE(i * 2),
     );
@@ -23,19 +24,9 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
     write(chunk) {
       if (closed) throw new Error("Audio denoiser is closed");
       try {
-        let offset = 0;
-        while (offset < chunk.length) {
-          const copied = Math.min(frameBytes - bufferedBytes, chunk.length - offset);
-          chunk.copy(buffered, bufferedBytes, offset, offset + copied);
-          bufferedBytes += copied;
-          offset += copied;
-          if (bufferedBytes === frameBytes) {
-            processFrame();
-            bufferedBytes = 0;
-          }
-        }
+        buffer.write(chunk, processFrame);
       } catch (error) {
-        bufferedBytes = 0;
+        buffer.reset();
         let resetError;
         try {
           state.destroy();
@@ -54,7 +45,7 @@ export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = 
       }
     },
     reset() {
-      if (!closed) bufferedBytes = 0;
+      if (!closed) buffer.reset();
     },
     close() {
       if (closed) return;
