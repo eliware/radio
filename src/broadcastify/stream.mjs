@@ -1,4 +1,5 @@
 import { createPcmQueue } from "./pcm-queue.mjs";
+import { createPcmCongestionPolicy } from "./congestion.mjs";
 import { createBroadcastifyStreamPump } from "./pump.mjs";
 
 export function createBroadcastifyStream(settings, options = {}) {
@@ -9,7 +10,7 @@ export function createBroadcastifyStream(settings, options = {}) {
     clearIntervalImpl = clearInterval,
   } = options;
   let closed = false;
-  const queue = createPcmQueue(onError);
+  const queue = createPcmCongestionPolicy(createPcmQueue(), onError);
   const pump = settings.enabled
     ? createBroadcastifyStreamPump({ queue, getChild, onError, setIntervalImpl, clearIntervalImpl })
     : undefined;

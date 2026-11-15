@@ -145,7 +145,7 @@ test("uses built-in defaults while waiting for an unknown SDR", async () => {
   expect(supervisor.status().state).toBe("stopped");
 });
 
-test("backs off after process exits and handles spawn failures", async () => {
+test("backs off after process exits while devices become unavailable", async () => {
   let releaseWait;
   let isPresent = true;
   let child;
@@ -178,7 +178,10 @@ test("backs off after process exits and handles spawn failures", async () => {
     await Promise.resolve();
   expect(supervisor.status().state).toBe("waiting-for-sdrs");
   await supervisor.close();
+});
 
+test("backs off after spawn failures", async () => {
+  const errors = [];
   const retry = createAirbandSupervisor({
     configs: [{ SDR_SERIAL: "851" }],
     configPath: "/tmp/airband.conf",
@@ -195,7 +198,6 @@ test("backs off after process exits and handles spawn failures", async () => {
   expect(retry.status().error).toBe("spawn failed");
   await retry.close();
 });
-
 test("reports child process errors and waits for restart", async () => {
   let releaseWait;
   let child;
