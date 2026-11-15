@@ -3,42 +3,26 @@ import { createAuthToken } from "./auth.mjs";
 import { createZelloCommands } from "./commands.mjs";
 import { createZelloAudioSender } from "./audio-sender.mjs";
 import { createZelloStreams } from "./streams.mjs";
-import { createZelloConnection } from "./connection.mjs";
+import { createZelloLifecycle } from "./lifecycle.mjs";
 
 export function createZelloSession(config, WebSocketImpl = WebSocket) {
-  let connection;
-  let online = false;
+  const lifecycle = createZelloLifecycle(WebSocketImpl);
   let commands;
   const streams = createZelloStreams(config.CHANNEL);
   const sendAudio = createZelloAudioSender({
-    getSocket: () => connection?.socket,
-    isOnline: () => online,
+    getSocket: lifecycle.getSocket,
+    isOnline: lifecycle.healthy,
     openState: WebSocketImpl.OPEN,
   });
 
   async function connect() {
-    connection?.close();
-    online = false;
     let currentCommands;
-    connection = createZelloConnection(WebSocketImpl, {
-      onClose: () => {
-        online = false;
-        currentCommands?.close(new Error("Zello socket closed"));
-      },
-      onError: (error) => {
-        online = false;
-        currentCommands?.close(error);
-      },
-    });
-    const currentSocket = connection.socket;
-    currentCommands = createZelloCommands(
-      currentSocket,
-      () => online,
-      () => connection?.socket === currentSocket,
-    );
+    const current = lifecycle.connect((error) => currentCommands?.close(error));
+    const currentSocket = current.socket;
+    currentCommands = createZelloCommands(currentSocket, lifecycle.healthy, current.isCurrent);
     commands = currentCommands;
     streams.setRequest(currentCommands.request);
-    await connection.opening;
+    await current.opening;
     try {
       const authToken = createAuthToken({ issuer: config.ISSUER, privateKey: config.PRIVATE_KEY });
       await commands.request(
@@ -51,29 +35,24 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
         },
         true,
       );
-      online = true;
+      current.setOnline();
     } catch (error) {
-      connection.close();
+      current.close();
       throw error;
     }
   }
   function close() {
-    online = false;
     commands?.close(new Error("Zello session stopped"));
-    connection?.close();
-  }
-
-  function waitForClose() {
-    return connection?.waitForClose() ?? Promise.resolve();
+    lifecycle.close();
   }
 
   return {
     connect,
     close,
-    healthy: () => online,
+    healthy: lifecycle.healthy,
     sendAudio,
     startStream: streams.startStream,
     stopStream: streams.stopStream,
-    waitForClose,
+    waitForClose: lifecycle.waitForClose,
   };
 }

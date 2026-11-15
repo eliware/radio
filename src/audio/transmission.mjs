@@ -3,6 +3,7 @@ import { createAudioStreamRecovery } from "./transmission/recovery.mjs";
 import { createTransmissionIdle } from "./transmission/idle.mjs";
 import { createTransmissionBuffer } from "./transmission/buffer.mjs";
 import { createTransmissionSendRecovery } from "./transmission/send-recovery.mjs";
+import { createTransmissionStart } from "./transmission/start.mjs";
 export function createAudioTransmission({
   session,
   rnnoise,
@@ -16,9 +17,9 @@ export function createAudioTransmission({
   clearTimeoutImpl = clearTimeout,
 }) {
   let streamId,
-    starting,
     closed = false,
     processor;
+  let start;
   const buffer = createTransmissionBuffer();
   const recovery = createAudioStreamRecovery({
     session,
@@ -27,7 +28,7 @@ export function createAudioTransmission({
     setTimeoutImpl,
     clearTimeoutImpl,
     isClosed: () => closed,
-    onAbandonedStopped: () => !closed && buffer.length && begin(),
+    onAbandonedStopped: () => !closed && buffer.length && start.begin(),
   });
   const idle = createTransmissionIdle({
     idleMs,
@@ -73,40 +74,22 @@ export function createAudioTransmission({
       if (!sendRecovery.handleFailure(error, streamId)) onError(error);
     }
   }
-  function begin() {
-    if (
-      closed ||
-      streamId ||
-      starting ||
-      recovery.isStopping ||
-      !session.healthy() ||
-      !recovery.canStart()
-    )
-      return;
-    if (recovery.hasAbandoned) {
-      recovery.stopAbandoned()?.catch(onError);
-      return;
-    }
-    starting = session
-      .startStream()
-      .then((id) => {
-        recovery.started();
-        if (closed) return recovery.stopOrAbandon(id);
-        streamId = id;
-        flush();
-      })
-      .catch((error) => {
-        buffer.clear();
-        processor.finishTransmission();
-        recovery.failed(error);
-      })
-      .finally(() => {
-        starting = undefined;
-      });
-  }
+  start = createTransmissionStart({
+    session,
+    recovery,
+    buffer,
+    processor,
+    isClosed: () => closed,
+    hasStream: () => Boolean(streamId),
+    onStarted: (id) => {
+      streamId = id;
+      flush();
+    },
+    onError,
+  });
   async function end(force = false) {
     if ((closed && !force) || !idle.isIdle(force)) return;
-    if (starting) await starting;
+    if (start.isStarting) await start.wait();
     if (!idle.isIdle(force)) return;
     buffer.keepCompleteFrames();
     flush();
@@ -121,7 +104,7 @@ export function createAudioTransmission({
     closed = true;
     idle.reset();
     recovery.cancelAbandonedStop();
-    if (starting) await starting;
+    if (start.isStarting) await start.wait();
     await recovery.stopAbandoned();
     await end(true);
     await recovery.stopAbandoned();
@@ -134,7 +117,7 @@ export function createAudioTransmission({
       idle.recordActivity();
       if (!recovery.canStart()) return;
       buffer.append(packet);
-      begin();
+      start.begin();
       flush();
       idle.schedule();
     },

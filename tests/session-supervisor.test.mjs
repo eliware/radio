@@ -72,10 +72,7 @@ test("retains its initial tone state across a reconnect and resets long-lived ba
   const item = channel("PD");
   let closeWaits = 0;
   const delays = [];
-  const sent = [];
-  item.session.startStream = async () => 12;
-  item.session.sendAudio = (_id, packet) => sent.push(packet);
-  item.session.stopStream = async () => {};
+  let toneCount = 0;
   item.session.waitForClose = () => {
     closeWaits += 1;
     if (closeWaits === 1) return Promise.resolve();
@@ -85,6 +82,9 @@ test("retains its initial tone state across a reconnect and resets long-lived ba
     wait: async (ms) => delays.push(ms),
     onError: () => {},
     log: quietLog,
+    playTone: async () => {
+      toneCount += 1;
+    },
   });
   await supervisor.initialReady;
   await jest.advanceTimersByTimeAsync(30000);
@@ -92,7 +92,7 @@ test("retains its initial tone state across a reconnect and resets long-lived ba
     await Promise.resolve();
   expect(item.session.connected).toBe(2);
   expect(item.tonePlayed).toBe(true);
-  expect(sent).toHaveLength(50);
+  expect(toneCount).toBe(1);
   item.session.release();
   await supervisor.close();
   jest.useRealTimers();
