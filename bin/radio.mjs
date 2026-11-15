@@ -3,7 +3,7 @@ import { registerHandlers, registerSignals } from "@eliware/common";
 import { logger } from "../src/logger.mjs";
 import { createRadioRuntime } from "../src/radio/runtime.mjs";
 import { registerRadioShutdown } from "../src/radio-shutdown.mjs";
-import { startStatusListener } from "../src/status/listener.mjs";
+import { readStatusPort, startStatusListener } from "../src/status/listener.mjs";
 
 let runtime;
 let server;
@@ -17,8 +17,13 @@ const shutdown = registerRadioShutdown({
 });
 
 try {
+  const port = readStatusPort();
   runtime = await createRadioRuntime({ log: logger });
-  await startStatusListener(runtime, { log: logger, onServer: (instance) => (server = instance) });
+  await startStatusListener(runtime, {
+    log: logger,
+    onServer: (instance) => (server = instance),
+    port,
+  });
 } catch (error) {
   await shutdown.startupFailed(error);
 }

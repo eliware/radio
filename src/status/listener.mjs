@@ -1,15 +1,17 @@
 import { createStatusServer } from "./server.mjs";
 
+export function readStatusPort(value = process.env.RADIO_HEALTH_PORT ?? 1400) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65535)
+    throw new Error("RADIO_HEALTH_PORT must be an integer from 0 to 65535");
+  return port;
+}
+
 export async function startStatusListener(
   runtime,
-  {
-    log,
-    onServer,
-    port = process.env.RADIO_HEALTH_PORT ?? 1400,
-    createServer = createStatusServer,
-  },
+  { log, onServer, port, createServer = createStatusServer },
 ) {
-  const listenPort = Number(port);
+  const listenPort = readStatusPort(port);
   const server = createServer(runtime, log);
   onServer(server);
   try {

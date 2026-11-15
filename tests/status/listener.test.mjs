@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { startStatusListener } from "../../src/status/listener.mjs";
+import { readStatusPort, startStatusListener } from "../../src/status/listener.mjs";
 
 function fakeServer(fail = false) {
   const server = new EventEmitter();
@@ -87,4 +87,24 @@ test("uses the default health port when the environment is unset", async () => {
   } finally {
     if (previousPort !== undefined) process.env.RADIO_HEALTH_PORT = previousPort;
   }
+});
+
+test("validates the health port before listener creation", async () => {
+  const createServer = jest.fn();
+  expect(readStatusPort("1400")).toBe(1400);
+  for (const port of ["-1", "65536", "not-a-port", "1.5"]) {
+    expect(() => readStatusPort(port)).toThrow("RADIO_HEALTH_PORT must be an integer");
+    await expect(
+      startStatusListener(
+        {},
+        {
+          log: { info: () => {} },
+          onServer: () => {},
+          port,
+          createServer,
+        },
+      ),
+    ).rejects.toThrow("RADIO_HEALTH_PORT must be an integer");
+  }
+  expect(createServer).not.toHaveBeenCalled();
 });

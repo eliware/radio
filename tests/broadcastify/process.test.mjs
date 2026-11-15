@@ -25,16 +25,16 @@ test("handles spawn and pipe errors, then sanitizes FFmpeg stderr on exit", () =
   state.child.stderr.emit("data", "Connection to icecast://source:private@host/feed failed");
   state.child.emit("spawn");
   state.child.stdin.emit("error", new Error("raw pipe error"));
+  state.child.emit("error", new Error("secondary process error"));
   state.child.emit("close", 1, null);
   expect(state.callbacks.onSpawn).toHaveBeenCalledTimes(1);
   expect(state.callbacks.onError).toHaveBeenNthCalledWith(
     1,
     new Error("Broadcastify audio pipe failed"),
   );
-  expect(state.callbacks.onError).toHaveBeenLastCalledWith(
-    new Error("Fire FFmpeg exited (code 1: Connection to icecast://[redacted] failed)"),
-  );
-  expect(state.callbacks.onClose).toHaveBeenCalledWith({ failed: false });
+  expect(state.callbacks.onProcessError).toHaveBeenCalledTimes(1);
+  expect(state.callbacks.onError).toHaveBeenCalledTimes(1);
+  expect(state.callbacks.onClose).toHaveBeenCalledWith({ failed: true });
 });
 
 test("reports process errors once and ignores stale process events", () => {

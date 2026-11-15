@@ -37,8 +37,6 @@ test("starts FFmpeg, resets stable retry state, retries exits, and closes cleanl
   supervisor.child.stdin.writable = false;
   expect(supervisor.ready()).toBe(false);
   supervisor.child.stdin.writable = true;
-  supervisor.child.stdin.emit("error", new Error("stdin failed"));
-  expect(onError).toHaveBeenCalledWith(new Error("Broadcastify audio pipe failed"));
   const stable = timers.find((timer) => timer.ms === 60000);
   stable.callback();
   const first = spawnProcess.mock.results[0].value;

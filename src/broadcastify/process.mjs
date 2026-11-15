@@ -6,16 +6,17 @@ export function monitorBroadcastifyProcess(
 ) {
   let failed = false;
   let stderr = "";
+  function fail(error) {
+    if (!isCurrent() || isClosed() || failed) return;
+    failed = true;
+    onError(error);
+    onProcessError();
+  }
   child.stderr?.on("data", (chunk) => {
     stderr = `${stderr}${chunk}`.slice(-4096);
   });
-  child.stdin.on("error", () => onError(new Error("Broadcastify audio pipe failed")));
-  child.on("error", () => {
-    if (!isCurrent() || isClosed()) return;
-    failed = true;
-    onError(new Error("Broadcastify FFmpeg process failed"));
-    onProcessError();
-  });
+  child.stdin.on("error", () => fail(new Error("Broadcastify audio pipe failed")));
+  child.on("error", () => fail(new Error("Broadcastify FFmpeg process failed")));
   child.on("spawn", () => {
     if (!isCurrent() || isClosed()) return;
     onSpawn();
