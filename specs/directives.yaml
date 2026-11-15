@@ -4,8 +4,11 @@ directives:
   - id: E-1400.0
     dos:
       - Run one Node.js PID 1 supervisor in one Radio container.
-      - Run one RTLSDR-Airband process for the two configured NFM receivers.
+      - Run one RTLSDR-Airband process for one or more configured NFM channels.
       - Read one private environment file for each Zello destination.
+      - Allow one or more channel configuration files.
+      - Group channels that share an SDR serial on one dongle.
+      - Require shared dongles to use matching tuner amplification and span 2.4 MHz or less.
       - Apply configured CTCSS squelch and notch before producing audio.
       - Send receiver audio only while its CTCSS squelch is open.
       - Keep one continuous authenticated WebSocket connection for each Zello channel.

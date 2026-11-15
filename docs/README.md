@@ -1,7 +1,7 @@
 # Documentation
 
 Start with the [Radio-to-Zello bridge guide](radio-server.md). It is the end-user manual for
-planning, configuring, running, and troubleshooting a two-receiver installation.
+planning, configuring, running, and troubleshooting an installation with one or more channels.
 
 The manual covers:
 

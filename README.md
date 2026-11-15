@@ -22,8 +22,8 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio forwards two local NBFM receiver channels to their matching Zello channels, with optional
-post-filter Broadcastify Classic feeds.
+Radio forwards one or more local NBFM receiver channels to their matching Zello channels, with
+optional post-filter Broadcastify Classic feeds.
 
 ## Requirements
 
@@ -33,8 +33,8 @@ Use Node.js 26 or later and npm for local development.
 ## Setup
 
 Run `npm ci` for development. For deployment, copy `.env.example` to `.env` and set it to mode `600`.
-Fill in channel values. The default Compose setup runs one channel. More channel files can be listed
-with `RADIO_CONFIG_FILES`. See [the setup guide](docs/radio-server.md).
+Fill in the channel values. The default Compose setup runs one channel. Use an ignored Compose
+override to add channel files. See [the setup guide](docs/radio-server.md).
 
 ## Usage
 
@@ -54,8 +54,8 @@ Run `npm run format` to apply formatting and `npm run format:check` to check it.
 ## Troubleshooting
 
 See [troubleshooting guidance](docs/radio-server.md#troubleshooting) and inspect `docker compose`
-logs. `/health` shows if the status server responds. `/ready` shows if the receiver, both Zello
-sessions, and any enabled Broadcastify processes are active.
+logs. `/health` shows if the status server responds. `/ready` shows if the receiver, all Zello
+sessions, and enabled Broadcastify processes are active.
 
 ## Security
 
@@ -65,7 +65,7 @@ signing keys, and optional Broadcastify credentials. Git and the Docker build co
 ## Configuration
 
 Channel files define Zello accounts, signing keys, SDR devices, frequencies, CTCSS tones, UDP
-numbers, and RNNoise level. See [all settings](docs/radio-server.md#channel-settings).
+ports, and RNNoise level. See [all settings](docs/radio-server.md#channel-settings).
 
 ## Operations
 
