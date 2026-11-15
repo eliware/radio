@@ -8,9 +8,16 @@ export function listenForZelloResponses(socket, isActive, waiting) {
       return;
     }
     if (!response || typeof response !== "object" || Array.isArray(response)) return;
-    const pending = waiting.get(response.seq);
+    const sequence =
+      typeof response.seq === "number"
+        ? response.seq
+        : typeof response.seq === "string" && /^\d+$/.test(response.seq)
+          ? Number(response.seq)
+          : NaN;
+    if (!Number.isSafeInteger(sequence)) return;
+    const pending = waiting.get(sequence);
     if (!pending) return;
-    waiting.delete(response.seq);
+    waiting.delete(sequence);
     clearTimeout(pending.timer);
     if (typeof response.success !== "boolean") pending.reject(new Error("Invalid Zello response"));
     else if (response.success) pending.resolve(response);

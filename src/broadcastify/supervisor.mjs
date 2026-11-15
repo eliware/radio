@@ -32,10 +32,6 @@ export function createBroadcastifySupervisor(
 
   function start() {
     if (closed || !settings.enabled) return;
-    if (child) {
-      scheduleRestart();
-      return;
-    }
     state = "connecting";
     try {
       child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
@@ -47,10 +43,7 @@ export function createBroadcastifySupervisor(
         isCurrent: () => child === process,
         isClosed: () => closed,
         onError,
-        onProcessError: () => {
-          state = "retrying";
-          scheduleRestart();
-        },
+        onProcessError: () => (state = "retrying"),
         onSpawn: () => {
           state = "running";
           stability.observe(60000);

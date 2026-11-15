@@ -16,6 +16,9 @@ test("ignores malformed and unknown responses and settles matching commands", as
     socket.emit("message", Buffer.from(JSON.stringify(value)));
   }
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 99, success: true })));
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: "not-numeric", success: true })));
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: 1.5, success: true })));
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: true, success: true })));
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 1, success: true })));
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 2, success: false })));
   expect(resolve).toHaveBeenCalledWith({ seq: 1, success: true });
@@ -54,4 +57,14 @@ test("rejects matching responses whose success flag is not boolean", () => {
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 5, success: "yes" })));
   expect(reject).toHaveBeenCalledWith(new Error("Invalid Zello response"));
   expect(waiting.has(5)).toBe(false);
+});
+
+test("matches numeric-string response sequence identifiers", () => {
+  const socket = new EventEmitter();
+  const resolve = jest.fn();
+  const waiting = new Map([[6, { resolve, reject: jest.fn(), timer: undefined }]]);
+  listenForZelloResponses(socket, () => true, waiting);
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: "6", success: true })));
+  expect(resolve).toHaveBeenCalledWith({ seq: "6", success: true });
+  expect(waiting.has(6)).toBe(false);
 });

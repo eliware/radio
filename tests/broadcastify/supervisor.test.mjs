@@ -80,12 +80,12 @@ test("reports process errors once and retries after the current child closes", a
   );
   const first = supervisor.child;
   first.emit("error", new Error("spawn failed"));
-  timers.find((timer) => timer.ms === 1000).callback();
-  expect(supervisor.child).toBe(first);
-  expect(spawnProcess).toHaveBeenCalledTimes(1);
+  expect(timers).toHaveLength(0);
+  expect(supervisor.status()).toEqual({ state: "retrying" });
   first.emit("close", 1);
+  timers.find((timer) => timer.ms === 1000).callback();
+  expect(spawnProcess).toHaveBeenCalledTimes(2);
   expect(onError).toHaveBeenCalledTimes(1);
-  timers.find((timer) => timer.ms === 2000).callback();
   expect(supervisor.child).toBeDefined();
   await supervisor.close();
 });
@@ -103,10 +103,9 @@ test("waits for the failed child to close before starting a replacement", async 
     },
   );
   oldChild.emit("error", new Error("spawn failed"));
-  timers.find(({ ms }) => ms === 1000).callback();
-  expect(supervisor.child).toBe(oldChild);
+  expect(timers).toHaveLength(0);
   oldChild.emit("close", 1);
-  timers.find(({ ms }) => ms === 2000).callback();
+  timers.find(({ ms }) => ms === 1000).callback();
   expect(supervisor.child).toBe(newChild);
   oldChild.emit("close", 1);
   expect(supervisor.child).toBe(newChild);
