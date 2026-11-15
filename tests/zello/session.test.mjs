@@ -148,6 +148,90 @@ test("rejects a websocket error before open so the supervisor can retry", async 
   expect(session.healthy()).toBe(false);
 });
 
+test("keeps an overlapping logon command bound to its own socket", async () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
+  const sockets = [];
+  class ControlledSocket extends EventEmitter {
+    static OPEN = 1;
+    static CLOSED = 3;
+    readyState = 0;
+    commands = [];
+
+    constructor() {
+      super();
+      sockets.push(this);
+    }
+
+    open() {
+      this.readyState = ControlledSocket.OPEN;
+      this.emit("open");
+    }
+
+    send(value) {
+      this.commands.push(JSON.parse(value));
+    }
+
+    respond(index = 0) {
+      this.emit(
+        "message",
+        Buffer.from(JSON.stringify({ seq: this.commands[index].seq, success: true })),
+      );
+    }
+
+    close() {
+      this.readyState = ControlledSocket.CLOSED;
+      this.emit("close");
+    }
+  }
+  const session = createZelloSession(
+    {
+      CHANNEL: "PD",
+      USERNAME: "radio",
+      PASSWORD: "pw",
+      ISSUER: "issuer",
+      PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+    },
+    ControlledSocket,
+  );
+
+  const replacedConnect = session.connect();
+  sockets[0].open();
+  await Promise.resolve();
+  sockets[0].respond();
+  const currentConnect = session.connect();
+  sockets[1].open();
+  await Promise.resolve();
+  sockets[1].respond();
+  await expect(replacedConnect).rejects.toThrow("during login");
+  await currentConnect;
+
+  expect(sockets[0].commands.map(({ command }) => command)).toEqual(["logon"]);
+  expect(sockets[1].commands.map(({ command }) => command)).toEqual(["logon"]);
+  session.close();
+
+  const beforeOpenSession = createZelloSession(
+    {
+      CHANNEL: "PD",
+      USERNAME: "radio",
+      PASSWORD: "pw",
+      ISSUER: "issuer",
+      PRIVATE_KEY: privateKey.export({ type: "pkcs8", format: "pem" }),
+    },
+    ControlledSocket,
+  );
+  const staleOpening = beforeOpenSession.connect();
+  sockets[2].open();
+  const activeOpening = beforeOpenSession.connect();
+  sockets[3].open();
+  await expect(staleOpening).rejects.toThrow("before login");
+  await Promise.resolve();
+  sockets[3].respond();
+  await activeOpening;
+  expect(sockets[2].commands).toEqual([]);
+  expect(sockets[3].commands.map(({ command }) => command)).toEqual(["logon"]);
+  beforeOpenSession.close();
+});
+
 test("closes a failed websocket when terminate is unavailable", async () => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });
   let failedSocket;

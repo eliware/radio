@@ -24,8 +24,9 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
     streams.setRequest(currentCommands.request);
     await current.opening;
     try {
+      if (!current.isCurrent()) throw new Error("Zello connection was replaced before login");
       const authToken = createAuthToken({ issuer: config.ISSUER, privateKey: config.PRIVATE_KEY });
-      await commands.request(
+      await currentCommands.request(
         {
           command: "logon",
           auth_token: authToken,
@@ -35,6 +36,7 @@ export function createZelloSession(config, WebSocketImpl = WebSocket) {
         },
         true,
       );
+      if (!current.isCurrent()) throw new Error("Zello connection was replaced during login");
       current.setOnline();
     } catch (error) {
       current.close();

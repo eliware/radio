@@ -17,12 +17,25 @@ test("accumulates PCM and flushes complete frames", () => {
     Buffer.concat([Buffer.alloc(800, 1), Buffer.alloc(frameBytes - 800, 2)]),
   );
   expect(buffer.length).toBe(0);
+  buffer.append(Buffer.alloc(frameBytes * 2));
+  buffer.flush(onFrame);
+  expect(onFrame).toHaveBeenCalledTimes(3);
+  buffer.append(Buffer.alloc(0));
 });
 
 test("discards incomplete frames or all buffered PCM", () => {
   const buffer = createTransmissionBuffer();
   const frameBytes = (FRAME_SAMPLES / 3) * 4;
-  buffer.append(Buffer.alloc(frameBytes + 120));
+  buffer.append(Buffer.alloc(frameBytes - 4));
+  buffer.append(Buffer.alloc(124));
+  buffer.keepCompleteFrames();
+  expect(buffer.length).toBe(frameBytes);
+  buffer.clear();
+  buffer.append(Buffer.alloc(200));
+  buffer.keepCompleteFrames();
+  expect(buffer.length).toBe(0);
+  buffer.append(Buffer.alloc(frameBytes - 4));
+  buffer.append(Buffer.alloc(124));
   buffer.keepCompleteFrames();
   expect(buffer.length).toBe(frameBytes);
   buffer.clear();
