@@ -1,11 +1,28 @@
 # Release Notes
 
-## 15.1.0 — 2026-11-03
+## 15.1.0 — 2026-11-15
+
+### Added
+
+- Supports one or more channel configuration files. Shared-dongle channels require matching tuner amplification and frequencies spanning no more than 2.4 MHz.
+- Adds a NAS deployment target that pulls the repository, installs dependencies, and runs the test suite.
 
 ### Changed
 
-- Updated `@eliware/test` to 15.1.0 and `ws` to 8.22.1.
-- Updated transitive dependencies to their latest compatible versions.
+- Uses Node.js 26 on Debian Bookworm Slim for the radio container.
+- Simplifies the base Compose setup to one `.env` channel file. Configure more private channel files with an ignored Compose override. Git and Docker build context exclude channel files and overrides.
+- Updates `@eliware/resampler` to 15.1.0, `ws` to 8.23.0, and `@eliware/test` to 15.1.0, along with the resolved dependency updates in the lockfile.
+- Expands the end-user guide for multi-channel setup, shared SDRs, channel settings, and health/readiness behavior.
+- Refactors audio denoising and transmission, logging, configuration, radio startup, Airband, Broadcastify, Zello, and status-server code into focused modules.
+
+### Fixed
+
+- Preserves buffered audio and retries after Zello stream-start failures. Stops abandoned streams before starting replacements.
+- Prevents stale Zello socket callbacks and logon requests from affecting replacement connections, validates command responses, and removes response listeners during connection cleanup.
+- Restarts failed Broadcastify output pipes without replacing a child before it closes, and ensures stream and supervisor cleanup both run during shutdown.
+- Closes constructed channel sessions when radio startup fails and cleans up failed status-server binds.
+- Validates health-port values, finite Airband frequencies and tuner amplification values, and SDR serials before starting services or generating configuration.
+- Redacts registered credentials from status responses and avoids leaking audio transmission or child-process resources when shutdown encounters errors.
 
 ## 15.0.1 — 2026-10-27
 
