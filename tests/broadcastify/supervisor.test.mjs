@@ -64,10 +64,11 @@ test("reports process errors once and retries after the current child closes", a
   const children = [childProcess(), childProcess()];
   const timers = [];
   const onError = jest.fn();
+  const spawnProcess = jest.fn(() => children.shift());
   const supervisor = createBroadcastifySupervisor(
     { enabled: true },
     {
-      spawnProcess: () => children.shift(),
+      spawnProcess,
       onError,
       setTimeoutImpl: (callback, ms) => {
         const timer = { callback, ms };
@@ -79,14 +80,17 @@ test("reports process errors once and retries after the current child closes", a
   );
   const first = supervisor.child;
   first.emit("error", new Error("spawn failed"));
+  timers.find((timer) => timer.ms === 1000).callback();
+  expect(supervisor.child).toBe(first);
+  expect(spawnProcess).toHaveBeenCalledTimes(1);
   first.emit("close", 1);
   expect(onError).toHaveBeenCalledTimes(1);
-  timers.find((timer) => timer.ms === 1000).callback();
+  timers.find((timer) => timer.ms === 2000).callback();
   expect(supervisor.child).toBeDefined();
   await supervisor.close();
 });
 
-test("ignores a stale child close after its retry has started a replacement", async () => {
+test("waits for the failed child to close before starting a replacement", async () => {
   const oldChild = childProcess();
   const newChild = childProcess();
   const timers = [];
@@ -100,6 +104,9 @@ test("ignores a stale child close after its retry has started a replacement", as
   );
   oldChild.emit("error", new Error("spawn failed"));
   timers.find(({ ms }) => ms === 1000).callback();
+  expect(supervisor.child).toBe(oldChild);
+  oldChild.emit("close", 1);
+  timers.find(({ ms }) => ms === 2000).callback();
   expect(supervisor.child).toBe(newChild);
   oldChild.emit("close", 1);
   expect(supervisor.child).toBe(newChild);

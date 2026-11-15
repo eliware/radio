@@ -12,6 +12,9 @@ test("ignores malformed and unknown responses and settles matching commands", as
   ]);
   listenForZelloResponses(socket, () => true, waiting);
   socket.emit("message", Buffer.from("invalid"));
+  for (const value of [null, [], "response"]) {
+    socket.emit("message", Buffer.from(JSON.stringify(value)));
+  }
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 99, success: true })));
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 1, success: true })));
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 2, success: false })));
@@ -41,4 +44,14 @@ test("uses the default failure message when the response has no error", () => {
   listenForZelloResponses(socket, () => true, waiting);
   socket.emit("message", Buffer.from(JSON.stringify({ seq: 4, success: false })));
   expect(reject).toHaveBeenCalledWith(new Error("Zello request failed"));
+});
+
+test("rejects matching responses whose success flag is not boolean", () => {
+  const socket = new EventEmitter();
+  const reject = jest.fn();
+  const waiting = new Map([[5, { resolve: jest.fn(), reject, timer: undefined }]]);
+  listenForZelloResponses(socket, () => true, waiting);
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: 5, success: "yes" })));
+  expect(reject).toHaveBeenCalledWith(new Error("Invalid Zello response"));
+  expect(waiting.has(5)).toBe(false);
 });

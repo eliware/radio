@@ -32,6 +32,10 @@ export function createBroadcastifySupervisor(
 
   function start() {
     if (closed || !settings.enabled) return;
+    if (child) {
+      scheduleRestart();
+      return;
+    }
     state = "connecting";
     try {
       child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
