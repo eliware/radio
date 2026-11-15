@@ -1,4 +1,5 @@
 import { expect, test } from "@jest/globals";
+import { rememberSecrets } from "../../src/logging/secrets.mjs";
 import { createStatusResponse } from "../../src/status/response.mjs";
 
 test("formats healthy status responses as JSON", () => {
@@ -19,4 +20,17 @@ test("marks an unready response unavailable", () => {
     statusCode: 503,
     body: '{"status":"not-ready"}',
   });
+});
+
+test("redacts registered credentials from component status", () => {
+  const release = rememberSecrets([{ PASSWORD: "private-password" }]);
+  try {
+    const response = createStatusResponse("/ready", false, {
+      receiver: { state: "error", error: "failed with private-password" },
+    });
+    expect(response.body).not.toContain("private-password");
+    expect(response.body).toContain("[REDACTED]");
+  } finally {
+    release();
+  }
 });

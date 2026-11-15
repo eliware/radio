@@ -35,3 +35,9 @@ test("rejects non-finite channel frequencies and tuner gains", () => {
     "finite SDR_GAIN values",
   );
 });
+
+test("rejects SDR serials that could alter the generated config syntax", () => {
+  expect(() => createAirbandConfig([{ ...base, SDR_SERIAL: '851"; gain = 0; #' }])).toThrow(
+    "SDR_SERIAL is invalid",
+  );
+});

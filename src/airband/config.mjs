@@ -2,6 +2,12 @@ import { serializeAirbandConfig } from "./serializer.mjs";
 
 export function validateAirbandChannels(channels) {
   if (channels.length === 0) throw new Error("At least one channel is required");
+  if (
+    channels.some(
+      ({ SDR_SERIAL }) => typeof SDR_SERIAL !== "string" || !/^[a-zA-Z0-9_-]+$/.test(SDR_SERIAL),
+    )
+  )
+    throw new Error("SDR_SERIAL is invalid");
   if (new Set(channels.map(({ UDP_PORT }) => UDP_PORT)).size !== channels.length)
     throw new Error("Channels need distinct UDP ports");
   const groups = Map.groupBy(channels, ({ SDR_SERIAL }) => SDR_SERIAL);

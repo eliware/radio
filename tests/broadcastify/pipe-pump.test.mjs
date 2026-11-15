@@ -7,6 +7,7 @@ function childProcess() {
     writable: true,
     writableLength: 0,
     write: jest.fn(),
+    destroy: jest.fn(),
   });
   return { stdin };
 }
@@ -45,6 +46,7 @@ test("reports pipe backpressure once and reports write failures", () => {
   });
   pump();
   expect(onError).toHaveBeenLastCalledWith(new Error("Broadcastify audio pipe write failed"));
+  expect(child.stdin.destroy).toHaveBeenCalledWith(expect.any(Error));
 });
 
 test("returns false when the encoder child is unavailable", () => {

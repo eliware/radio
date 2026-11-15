@@ -20,8 +20,9 @@ export function createBroadcastifyPipePump({ getChild, nextPcm, onError }) {
     const pcm = nextPcm();
     try {
       child.stdin.write(pcm);
-    } catch {
+    } catch (error) {
       onError(new Error("Broadcastify audio pipe write failed"));
+      if (typeof child.stdin.destroy === "function") child.stdin.destroy(error);
     }
     return true;
   };
