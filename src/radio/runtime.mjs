@@ -1,5 +1,6 @@
 import { chmod, writeFile } from "node:fs/promises";
 import { errorDetails } from "../logging/error-details.mjs";
+import { redactError, releaseSecretsAndRedact } from "../logging/safe-error.mjs";
 import { rememberSecrets } from "../logging/secrets.mjs";
 import { logger } from "../logger.mjs";
 import { getRuntimePaths } from "../runtime-paths.mjs";
@@ -17,20 +18,6 @@ import { closeRadioResources } from "./resources.mjs";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
-
-function redactError(error) {
-  const details = errorDetails(error);
-  const safeError = new Error(details.message);
-  safeError.name = details.name;
-  safeError.stack = details.stack;
-  return safeError;
-}
-
-function releaseSecretsAndRedact(releaseSecrets, error) {
-  const safeError = redactError(error);
-  releaseSecrets();
-  return safeError;
-}
 
 export async function createRadioRuntime({
   configPaths = defaults.configPaths,

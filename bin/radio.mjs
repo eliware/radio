@@ -7,7 +7,7 @@ import { createStatusServer } from "../src/status/server.mjs";
 
 let runtime;
 let server;
-registerRadioShutdown({
+const shutdown = registerRadioShutdown({
   processImpl: process,
   registerHandlersImpl: registerHandlers,
   registerSignalsImpl: registerSignals,
@@ -26,7 +26,5 @@ try {
   });
   logger.info("Radio service started", { port });
 } catch (error) {
-  process.exitCode = 1;
-  logger.error("Radio service startup failed", { error: errorDetails(error) });
-  await signals.shutdown("startup failure");
+  await shutdown.startupFailed(error);
 }

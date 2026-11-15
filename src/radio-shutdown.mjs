@@ -33,5 +33,12 @@ export function registerRadioShutdown({
 
   processImpl.on("uncaughtException", fatal);
   processImpl.on("unhandledRejection", fatal);
-  return signals;
+  return {
+    ...signals,
+    async startupFailed(error) {
+      processImpl.exitCode = 1;
+      log.error("Radio service startup failed", { error: errorDetails(error) });
+      await signals.shutdown("startup failure");
+    },
+  };
 }

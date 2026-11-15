@@ -12,7 +12,7 @@ export function createBroadcastifySupervisor(
     clearTimeoutImpl = clearTimeout,
   } = {},
 ) {
-  let child, stableTimer, closing;
+  let child, closing;
   let state = settings.enabled ? "connecting" : "disabled";
   let closed = false;
   const retry = createBroadcastifyRetry({ setTimeoutImpl, clearTimeoutImpl });
@@ -47,15 +47,11 @@ export function createBroadcastifySupervisor(
       child.on("spawn", () => {
         if (closed || child !== process) return;
         state = "running";
-        stableTimer = setTimeoutImpl(() => {
-          stableTimer = undefined;
-          retry.reset();
-        }, 60000);
+        retry.resetAfterStable(60000);
       });
       child.on("close", (code, signal) => {
         if (child !== process) return;
-        if (stableTimer) clearTimeoutImpl(stableTimer);
-        stableTimer = undefined;
+        retry.cancelStableReset();
         child = undefined;
         if (!closed) {
           if (!failed) {
@@ -86,7 +82,6 @@ export function createBroadcastifySupervisor(
       if (closing) return closing;
       closed = true;
       retry.close();
-      if (stableTimer) clearTimeoutImpl(stableTimer);
       state = "closed";
       const process = child;
       if (!process) return Promise.resolve();

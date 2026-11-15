@@ -60,3 +60,13 @@ test("routes fatal process errors to shutdown and reports shutdown failures", as
   expect(state.shutdown).toHaveBeenCalledTimes(2);
   await Promise.resolve();
 });
+
+test("logs startup failures and routes them through the shutdown coordinator", async () => {
+  const state = setup();
+  await state.signals.startupFailed(new Error("startup failed"));
+  expect(state.processImpl.exitCode).toBe(1);
+  expect(state.log.error).toHaveBeenCalledWith("Radio service startup failed", {
+    error: expect.objectContaining({ message: "startup failed" }),
+  });
+  expect(state.shutdown).toHaveBeenCalledWith("startup failure");
+});
