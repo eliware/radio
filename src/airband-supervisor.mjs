@@ -3,6 +3,7 @@ import { logger as defaultLogger } from "./logger.mjs";
 import { hasUsbSerial } from "./usb/device.mjs";
 import { waitForAirbandDevices } from "./airband/device-monitor.mjs";
 import { createAirbandRetry } from "./airband/retry.mjs";
+import { startAirbandProcess } from "./airband/process.mjs";
 
 export function createAirbandSupervisor({
   configs,
@@ -18,10 +19,9 @@ export function createAirbandSupervisor({
   clearTimeoutImpl = clearTimeout,
 }) {
   let stopped = false;
-  let child;
   let state = "waiting-for-sdrs";
   let error;
-  let finishStartingChild;
+  let stopRunningProcess;
   let resolveStop;
   const stopSignal = new Promise((resolve) => {
     resolveStop = resolve;
@@ -58,58 +58,31 @@ export function createAirbandSupervisor({
         }
         error = undefined;
         state = "starting";
-        log.info("Starting RTLSDR-Airband", {
+        const processRun = startAirbandProcess({
+          configPath,
           serials: [...new Set(configs.map(({ SDR_SERIAL }) => SDR_SERIAL))],
-        });
-        child = spawnProcess("rtl_airband", ["-F", "-e", "-c", configPath], {
-          stdio: "inherit",
-        });
-        const result = await new Promise((resolve) => {
-          const process = child;
-          let shutdownTimer;
-          let finished = false;
-          const finish = (result) => {
-            if (finished) return;
-            finished = true;
-            if (shutdownTimer) clearTimeoutImpl(shutdownTimer);
-            finishStartingChild = undefined;
-            process.off("spawn", onSpawn);
-            process.off("error", onProcessError);
-            process.off("close", onClose);
-            resolve(result);
-          };
-          const onSpawn = () => {
+          log,
+          spawnProcess,
+          shutdownTimeoutMs,
+          setTimeoutImpl,
+          clearTimeoutImpl,
+          onStarted: () => {
             state = "running";
             log.info("RTLSDR-Airband started");
-          };
-          const stopChild = () => {
-            if (shutdownTimer) return;
-            shutdownTimer = setTimeoutImpl(() => {
-              process.kill?.("SIGKILL");
-              finish({ signal: "SIGKILL", ...(error && { cause: new Error(error) }) });
-            }, shutdownTimeoutMs);
-            process.kill?.("SIGTERM");
-          };
-          finishStartingChild = stopChild;
-          const onProcessError = (cause) => {
+          },
+          onError: (cause) => {
             state = "error";
             error = cause.message;
-            stopChild();
-          };
-          const onClose = (code, signal) => {
-            finish({ code, signal, ...(error && { cause: new Error(error) }) });
-          };
-          child.once("spawn", onSpawn);
-          child.once("error", onProcessError);
-          child.once("close", onClose);
+          },
         });
-        child = undefined;
+        stopRunningProcess = processRun.stop;
+        const result = await processRun.finished;
+        stopRunningProcess = undefined;
         if (stopped) break;
         state = result.cause ? "error" : "waiting-for-sdrs";
         error = result.cause?.message ?? `RTLSDR-Airband exited (${result.code ?? result.signal})`;
         onError(new Error(error));
       } catch (cause) {
-        child = undefined;
         state = "error";
         error = cause.message;
         onError(cause);
@@ -125,7 +98,7 @@ export function createAirbandSupervisor({
       stopped = true;
       resolveStop();
       state = "stopped";
-      finishStartingChild?.();
+      stopRunningProcess?.();
       await task;
     },
     ready: () => state === "running",

@@ -9,3 +9,8 @@ export function createToneFrame(frequency, frameIndex) {
   }
   return frame;
 }
+
+export function* createStartupToneFrames(frequency, frameCount = 50) {
+  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1)
+    yield createToneFrame(frequency, frameIndex);
+}
