@@ -187,3 +187,64 @@ test("closes Broadcastify streams and releases credentials if input creation thr
   ).rejects.toThrow("input construction failed");
   expect(closeBroadcast).toHaveBeenCalledTimes(2);
 });
+
+test("closes all input listeners when one bind fails", async () => {
+  let count = 0;
+  const closeInput = jest.fn(async () => {});
+  const closeBroadcastify = jest.fn(async () => {});
+  const runtime = createRadioRuntime({
+    configPaths: ["pd", "fd"],
+    loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+    loadNoise: async () => ({ frameSize: 480 }),
+    writeConfig: async () => {},
+    chmodConfig: async () => {},
+    log: silentLog,
+    makeInput: () => ({
+      listen: async () => {
+        count += 1;
+        if (count === 2) throw new Error("UDP port is busy");
+      },
+      close: closeInput,
+    }),
+    makeSession: () => ({ healthy: () => true, close: async () => {} }),
+    makeBroadcastify: () => ({ close: closeBroadcastify, ready: () => true, status: () => ({}) }),
+    makeSessionSupervisor: () => {
+      throw new Error("supervisors must not start before listeners bind");
+    },
+  });
+  await expect(runtime).rejects.toThrow("UDP port is busy");
+  expect(closeInput).toHaveBeenCalledTimes(2);
+  expect(closeBroadcastify).toHaveBeenCalledTimes(2);
+});
+
+test("closes constructed resources after supervisor startup failures", async () => {
+  for (const failure of ["sessions", "airband"]) {
+    const closeInput = jest.fn(async () => {});
+    const closeBroadcastify = jest.fn(async () => {});
+    const closeSessions = jest.fn(async () => {});
+    const runtime = createRadioRuntime({
+      configPaths: ["pd", "fd"],
+      loadConfig: async (path) => (path === "pd" ? config("851", "PD") : config("853", "FD")),
+      loadNoise: async () => ({ frameSize: 480 }),
+      writeConfig: async () => {},
+      chmodConfig: async () => {},
+      log: silentLog,
+      makeInput: () => ({ listen: async () => {}, close: closeInput }),
+      makeSession: () => ({ healthy: () => true, close: async () => {} }),
+      makeBroadcastify: () => ({ close: closeBroadcastify, ready: () => true, status: () => ({}) }),
+      makeSessionSupervisor: () => {
+        if (failure === "sessions") throw new Error("session setup failed");
+        return { close: closeSessions };
+      },
+      makeAirbandSupervisor: () => {
+        throw new Error("airband setup failed");
+      },
+    });
+    await expect(runtime).rejects.toThrow(
+      failure === "sessions" ? "session setup failed" : "airband setup failed",
+    );
+    expect(closeInput).toHaveBeenCalledTimes(2);
+    expect(closeBroadcastify).toHaveBeenCalledTimes(2);
+    expect(closeSessions).toHaveBeenCalledTimes(failure === "airband" ? 1 : 0);
+  }
+});
