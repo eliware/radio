@@ -191,8 +191,15 @@ period before counting failures.
 
 ## Operations
 
+Run the package script to build the image and start or update the local container:
+
 ```sh
-docker compose up -d --build   # Build the image and start or update the app.
+npm run deploy:compose
+```
+
+Use these commands to inspect the container, start it again, or stop it:
+
+```sh
 docker compose ps              # Show container and health state.
 docker compose logs -f radio   # Follow app and RTLSDR-Airband logs.
 docker compose restart radio   # Restart after editing channel configuration files.

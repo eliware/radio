@@ -22,55 +22,46 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio forwards one or more local NBFM receiver channels to their matching Zello channels, with
-optional post-filter Broadcastify Classic feeds.
+Radio forwards local NFM channels to matching Zello channels. It can also send processed audio to Broadcastify Classic.
 
 ## Requirements
 
-Runtime needs a Linux Docker Compose host, at least one RTL-SDR dongle, and production Zello credentials.
-Use Node.js 26 or later and npm for local development.
+Run the app on a Linux host with Docker Compose and an RTL-SDR dongle. Provide production Zello credentials.
+Use Node.js 26 or later and npm for development.
 
 ## Setup
 
-Run `npm ci` for development. For deployment, copy `.env.example` to `.env` and set it to mode `600`.
-Fill in the channel values. The default Compose setup runs one channel. Use an ignored Compose
-override to add channel files. See [the setup guide](docs/radio-server.md).
+Copy `.env.example` to `.env` and set its mode to `600`. Fill in the channel values.
+See [the setup guide](docs/radio-server.md) to add channels.
 
 ## Usage
 
-Start the bridge with `docker compose up -d --build`. Read [release notes](RELEASE_NOTES.md) for
-changes. Find operating details in [the guide](docs/README.md) and repository rules in
-[specifications](specs/README.md).
+Read [release notes](RELEASE_NOTES.md) for changes. Find user instructions in [the guide](docs/README.md).
+Read [specifications](specs/README.md) for repository contracts.
 
 ## Development
 
-See [contributor instructions](AGENTS.md) before making changes.
+Install dependencies with `npm ci`. Follow [contributor instructions](AGENTS.md).
 
 ## Testing
 
-Run `npm test` for repository validation. Run `npm run lint` and `npm run audit` for focused checks.
-Run `npm run format` to apply formatting and `npm run format:check` to check it.
+Run `npm test` for repository validation.
 
 ## Troubleshooting
 
-See [troubleshooting guidance](docs/radio-server.md#troubleshooting) and inspect `docker compose`
-logs. `/health` shows if the status server responds. `/ready` shows if the receiver, all Zello
-sessions, and enabled Broadcastify processes are active.
+See [troubleshooting guidance](docs/radio-server.md#troubleshooting). Check `/health` and `/ready` for application status.
 
 ## Security
 
-Keep `.env` and other channel configuration files private. They hold account passwords,
-signing keys, and optional Broadcastify credentials. Git and the Docker build context exclude them.
+Keep channel files private. They contain account passwords and signing keys.
 
 ## Configuration
 
-Channel files define Zello accounts, signing keys, SDR devices, frequencies, CTCSS tones, UDP
-ports, and RNNoise level. See [all settings](docs/radio-server.md#channel-settings).
+See [channel settings](docs/radio-server.md#channel-settings) for each channel value.
 
 ## Operations
 
-See [container operations](docs/radio-server.md#operations) for start, update, logging, and stop
-commands.
+Use `npm run deploy:compose` to build and start the local container. See [container operations](docs/radio-server.md#operations) for other commands.
 
 ## Support
 

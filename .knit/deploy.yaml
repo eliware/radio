@@ -16,3 +16,4 @@ on:
           - git pull
           - npm ci
           - npm test
+          - npm run deploy:compose
