@@ -1,5 +1,18 @@
 # Release Notes
 
+## 15.1.1 — 2026-11-16
+
+### Added
+
+- Adds the `deploy:compose` npm script to build and start the local container.
+- Runs the Compose deployment script after tests on the NAS deployment target.
+
+### Changed
+
+- Documents the local Compose deployment command and container operations.
+- Updates resolved development dependencies with `npm update`. `npm outdated` found no outdated direct dependencies.
+- Sets the package version to 15.1.1.
+
 ## 15.1.0 — 2026-11-15
 
 ### Added

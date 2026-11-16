@@ -22,7 +22,7 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio forwards local NFM channels to matching Zello channels. It can also send processed audio to Broadcastify Classic.
+Radio forwards local NBFM channels to matching Zello channels. It can also send processed audio to Broadcastify Classic.
 
 ## Requirements
 
