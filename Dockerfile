@@ -1,10 +1,13 @@
-FROM node:26-bookworm-slim AS build
+FROM ghcr.io/eliware/centos10-node26:latest AS build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash build-essential cmake git pkg-config linux-libc-dev ca-certificates \
-    libmp3lame-dev libshout3-dev libconfig++-dev libfftw3-dev libusb-1.0-0-dev \
-    libpulse-dev libsoapysdr-dev \
-    && rm -rf /var/lib/apt/lists/*
+USER 0
+RUN dnf -y install epel-release dnf-plugins-core \
+    && crb enable \
+    && dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+      bash ca-certificates cmake gcc gcc-c++ git kernel-headers make pkgconf-pkg-config \
+      lame-devel libshout-devel libconfig-devel fftw-devel libusb1-devel \
+      pulseaudio-libs-devel SoapySDR-devel \
+    && dnf clean all
 WORKDIR /build
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 RUN git clone --depth 1 https://github.com/rtlsdrblog/rtl-sdr-blog.git rtl-sdr-blog \
@@ -19,13 +22,16 @@ RUN git clone --depth 1 --branch v5.1.0 \
       -DCMAKE_BUILD_TYPE=Release -DNFM=TRUE \
     && cmake --build airband-build -j4
 
-FROM node:26-bookworm-slim
+FROM ghcr.io/eliware/centos10-node26:latest
+USER 0
 ENV NODE_ENV=production
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates ffmpeg libstdc++6 libmp3lame0 libshout3 libconfig++9v5 \
-    libfftw3-single3 libusb-1.0-0 libpulse0 libsoapysdr0.8 \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=build /usr/lib/x86_64-linux-gnu/librtlsdr.so* /usr/lib/x86_64-linux-gnu/
+RUN dnf -y install epel-release dnf-plugins-core \
+    && crb enable \
+    && dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+      ca-certificates ffmpeg-free lame-libs libshout libconfig fftw-libs-single \
+      libusb1 pulseaudio-libs SoapySDR \
+    && dnf clean all
+COPY --from=build /usr/lib64/librtlsdr.so* /usr/lib64/
 COPY --from=build /build/airband-build/src/rtl_airband /usr/local/bin/rtl_airband
 WORKDIR /app
 COPY package.json package-lock.json ./

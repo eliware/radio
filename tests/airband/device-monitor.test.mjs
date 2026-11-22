@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { waitForAirbandDevices } from "../../src/airband/device-monitor.mjs";
+import waitForAirbandDevices from "../../src/airband/device-monitor.mjs";
 
 test("waits until all configured SDR serials are present", async () => {
   const calls = [];

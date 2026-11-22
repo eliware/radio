@@ -1,4 +1,4 @@
-export function shutdownBroadcastifyProcess(
+export default function shutdownBroadcastifyProcess(
   process,
   { setTimeoutImpl, clearTimeoutImpl, timeoutMs },
 ) {

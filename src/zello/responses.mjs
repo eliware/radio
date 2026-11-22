@@ -1,4 +1,4 @@
-export function listenForZelloResponses(socket, isActive, waiting) {
+export default function listenForZelloResponses(socket, isActive, waiting) {
   const onMessage = (data) => {
     if (!isActive()) return;
     let response;

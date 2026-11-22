@@ -1,10 +1,10 @@
 import { Resampler } from "@eliware/resampler";
 import { SAMPLE_RATE } from "./codec.mjs";
-import { convertFloatPcmToS16le } from "./pcm-conversion.mjs";
+import convertFloatPcmToS16le from "./pcm-conversion.mjs";
 
 const AIRBAND_RATE = 16000;
 
-export function createAudioResampler({
+export default function createAudioResampler({
   onPcm,
   onError = () => {},
   createStreamImpl = (options) => new Resampler(options),

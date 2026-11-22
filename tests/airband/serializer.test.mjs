@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { serializeAirbandConfig } from "../../src/airband/serializer.mjs";
+import serializeAirbandConfig from "../../src/airband/serializer.mjs";
 
 test("serializes devices and channel feeds for RTLSDR-Airband", () => {
   const base = {

@@ -1,6 +1,6 @@
-import { redactErrorText } from "../logging/error-details.mjs";
+import redactErrorText from "../logging/redact-error-text.mjs";
 
-export function createStatusResponse(route, ready, status) {
+export default function createStatusResponse(route, ready, status) {
   return {
     statusCode: route === "/ready" && !ready ? 503 : 200,
     headers: { "content-type": "application/json" },

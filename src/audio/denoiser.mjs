@@ -1,8 +1,13 @@
-import { createPcmFrameBuffer } from "./denoiser/buffer.mjs";
-import { createDenoiserFrameProcessor } from "./denoiser/frame-processor.mjs";
-import { createDenoiserState } from "./denoiser/state.mjs";
+import createPcmFrameBuffer from "./denoiser/buffer.mjs";
+import createDenoiserFrameProcessor from "./denoiser/frame-processor.mjs";
+import createDenoiserState from "./denoiser/state.mjs";
 
-export function createAudioDenoiser({ rnnoise, rnnoiseMix = 1, onPcm, onError = () => {} }) {
+export default function createAudioDenoiser({
+  rnnoise,
+  rnnoiseMix = 1,
+  onPcm,
+  onError = () => {},
+}) {
   const state = createDenoiserState({ rnnoise, onError });
   const buffer = createPcmFrameBuffer(rnnoise.frameSize * 2);
   let closed = false;

@@ -1,4 +1,4 @@
-export function createBroadcastifyRetry({
+export default function createBroadcastifyRetry({
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
   initialDelayMs = 1000,

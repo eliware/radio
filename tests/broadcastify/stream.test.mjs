@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyStream } from "../../src/broadcastify/stream.mjs";
+import createBroadcastifyStream from "../../src/broadcastify/stream.mjs";
 
 function childProcess() {
   const child = new EventEmitter();

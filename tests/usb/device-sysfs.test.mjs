@@ -1,5 +1,5 @@
 import { expect, test, jest } from "@jest/globals";
-import { hasAuthorizedUsbSerial } from "../../src/usb/device-sysfs.mjs";
+import hasAuthorizedUsbSerial from "../../src/usb/device-sysfs.mjs";
 
 test("rejects an unauthorized device with the requested serial", async () => {
   const filesystem = {

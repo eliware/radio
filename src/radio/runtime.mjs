@@ -1,23 +1,25 @@
 import { chmod, writeFile } from "node:fs/promises";
-import { redactError, releaseSecretsAndRedact } from "../logging/safe-error.mjs";
+import redactError from "../logging/safe-error.mjs";
+import releaseSecretsAndRedact from "../logging/release-secrets-and-redact.mjs";
 import { logger } from "../logger.mjs";
-import { getRuntimePaths } from "../runtime-paths.mjs";
-import { createAirbandSupervisor } from "../airband-supervisor.mjs";
-import { createAudioInput } from "../audio/input.mjs";
-import { loadRnnoise } from "../audio/rnnoise.mjs";
-import { loadChannelConfig } from "../channel-config.mjs";
-import { createSessionSupervisor } from "../session-supervisor.mjs";
-import { createZelloSession } from "../zello/session.mjs";
-import { createBroadcastifyStream } from "../broadcastify/stream.mjs";
-import { createBroadcastifyRuntime } from "../broadcastify/runtime.mjs";
-import { createRadioChannels, createRadioInputs } from "./channels.mjs";
-import { closeRadioResources } from "./resources.mjs";
-import { prepareRadioConfiguration } from "./configuration.mjs";
+import getRuntimePaths from "../runtime-paths.mjs";
+import createAirbandSupervisor from "../airband-supervisor.mjs";
+import createAudioInput from "../audio/input.mjs";
+import loadRnnoise from "../audio/rnnoise.mjs";
+import loadChannelConfig from "../channel-config.mjs";
+import createSessionSupervisor from "../session-supervisor.mjs";
+import createZelloSession from "../zello/session.mjs";
+import createBroadcastifyStream from "../broadcastify/stream.mjs";
+import createBroadcastifyRuntime from "../broadcastify/runtime.mjs";
+import createRadioChannels from "./channels.mjs";
+import createRadioInputs from "./inputs.mjs";
+import closeRadioResources from "./resources.mjs";
+import prepareRadioConfiguration from "./configuration.mjs";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const defaults = getRuntimePaths();
 
-export async function createRadioRuntime({
+export default async function createRadioRuntime({
   configPaths = defaults.configPaths,
   airbandPath = defaults.airbandPath,
   loadConfig = loadChannelConfig,

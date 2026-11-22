@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createAirbandRetry } from "../../src/airband/retry.mjs";
+import createAirbandRetry from "../../src/airband/retry.mjs";
 
 test("doubles retry delays to the ceiling and resets after a device wait", () => {
   const retry = createAirbandRetry();

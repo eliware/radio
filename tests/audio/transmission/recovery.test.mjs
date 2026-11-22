@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioStreamRecovery } from "../../../src/audio/transmission/recovery.mjs";
-import { createAudioTransmission } from "../../../src/audio/transmission.mjs";
+import createAudioStreamRecovery from "../../../src/audio/transmission/recovery.mjs";
+import createAudioTransmission from "../../../src/audio/transmission.mjs";
 
 test("backs off failed stream starts, caps the delay, and resets after success", () => {
   let now = 0;

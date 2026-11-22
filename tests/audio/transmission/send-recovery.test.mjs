@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioTransmission } from "../../../src/audio/transmission.mjs";
+import createAudioTransmission from "../../../src/audio/transmission.mjs";
 
 test("abandons a stream after a synchronous audio send failure", async () => {
   let now = 0;

@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { listenForZelloResponses } from "../../src/zello/responses.mjs";
+import listenForZelloResponses from "../../src/zello/responses.mjs";
 
 test("ignores malformed and unknown responses and settles matching commands", async () => {
   const socket = new EventEmitter();

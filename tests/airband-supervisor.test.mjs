@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createAirbandSupervisor } from "../src/airband-supervisor.mjs";
+import createAirbandSupervisor from "../src/airband-supervisor.mjs";
 
 const quietLog = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 

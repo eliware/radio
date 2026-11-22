@@ -1,6 +1,6 @@
 import { parseEnv } from "node:util";
 import { expect, test } from "@jest/globals";
-import { validateSdrSettings } from "../../../src/config/channel/sdr.mjs";
+import validateSdrSettings from "../../../src/config/channel/sdr.mjs";
 
 const valid = {
   SDR_SERIAL: "851",

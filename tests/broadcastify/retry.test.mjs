@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyRetry } from "../../src/broadcastify/retry.mjs";
+import createBroadcastifyRetry from "../../src/broadcastify/retry.mjs";
 
 test("schedules restart callbacks with capped backoff and resets delay", () => {
   const timers = [];

@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createDenoiserState } from "../../../src/audio/denoiser/state.mjs";
+import createDenoiserState from "../../../src/audio/denoiser/state.mjs";
 
 test("processes frames through the current RNNoise state", () => {
   const frame = new Float32Array([1, 2]);

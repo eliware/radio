@@ -1,11 +1,11 @@
 import WebSocket from "ws";
-import { createAuthToken } from "./auth.mjs";
-import { createZelloCommands } from "./commands.mjs";
-import { createZelloAudioSender } from "./audio-sender.mjs";
-import { createZelloStreams } from "./streams.mjs";
-import { createZelloLifecycle } from "./lifecycle.mjs";
+import createAuthToken from "./auth.mjs";
+import createZelloCommands from "./commands.mjs";
+import createZelloAudioSender from "./audio-sender.mjs";
+import createZelloStreams from "./streams.mjs";
+import createZelloLifecycle from "./lifecycle.mjs";
 
-export function createZelloSession(config, WebSocketImpl = WebSocket) {
+export default function createZelloSession(config, WebSocketImpl = WebSocket) {
   const lifecycle = createZelloLifecycle(WebSocketImpl);
   let commands;
   const streams = createZelloStreams(config.CHANNEL);

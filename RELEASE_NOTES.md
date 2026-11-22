@@ -1,6 +1,6 @@
 # Release Notes
 
-## 15.1.1 — 2026-11-16
+## 15.2.0 — 2026-11-22
 
 ### Added
 
@@ -10,8 +10,10 @@
 ### Changed
 
 - Documents the local Compose deployment command and container operations.
+- Builds the Radio container with the Eliware CentOS 10 Node.js 26 base image.
+- Aligns implementation modules with the `@eliware/test` 15.2.0 export conventions.
 - Updates resolved development dependencies with `npm update`. `npm outdated` found no outdated direct dependencies.
-- Sets the package version to 15.1.1.
+- Sets the package version to 15.2.0.
 
 ## 15.1.0 — 2026-11-15
 

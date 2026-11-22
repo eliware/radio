@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createZelloCommands } from "../../src/zello/commands.mjs";
+import createZelloCommands from "../../src/zello/commands.mjs";
 
 class Socket extends EventEmitter {
   send(value) {

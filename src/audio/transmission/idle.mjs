@@ -1,6 +1,6 @@
-import { createAudioIdleTimer } from "../idle-timer.mjs";
+import createAudioIdleTimer from "../idle-timer.mjs";
 
-export function createTransmissionIdle({
+export default function createTransmissionIdle({
   idleMs,
   now,
   setTimeoutImpl,

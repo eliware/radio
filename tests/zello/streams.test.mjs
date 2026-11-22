@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createZelloStreams } from "../../src/zello/streams.mjs";
+import createZelloStreams from "../../src/zello/streams.mjs";
 
 test("starts an Opus stream with the configured channel and codec header", async () => {
   const request = jest.fn(async () => ({ stream_id: 23 }));

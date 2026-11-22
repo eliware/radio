@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
-import { rememberSecrets } from "../../src/logging/secrets.mjs";
-import { createStatusResponse } from "../../src/status/response.mjs";
+import rememberSecrets from "../../src/logging/secrets.mjs";
+import createStatusResponse from "../../src/status/response.mjs";
 
 test("formats healthy status responses as JSON", () => {
   const status = { receiver: { state: "running" } };

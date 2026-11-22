@@ -1,6 +1,6 @@
 import { Rnnoise } from "@shiguredo/rnnoise-wasm";
 
-export async function loadRnnoise(load = () => Rnnoise.load()) {
+export default async function loadRnnoise(load = () => Rnnoise.load()) {
   const addWindow = globalThis.window === undefined;
   if (addWindow) globalThis.window = globalThis;
   try {

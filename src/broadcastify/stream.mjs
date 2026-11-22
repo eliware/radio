@@ -1,8 +1,8 @@
-import { createPcmQueue } from "./pcm-queue.mjs";
-import { createPcmCongestionPolicy } from "./congestion.mjs";
-import { createBroadcastifyStreamPump } from "./pump.mjs";
+import createPcmQueue from "./pcm-queue.mjs";
+import createPcmCongestionPolicy from "./congestion.mjs";
+import createBroadcastifyStreamPump from "./pump.mjs";
 
-export function createBroadcastifyStream(settings, options = {}) {
+export default function createBroadcastifyStream(settings, options = {}) {
   const {
     onError = () => {},
     getChild = () => undefined,

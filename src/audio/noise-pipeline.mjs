@@ -1,8 +1,8 @@
-import { createAudioPacketizer } from "./packetizer.mjs";
-import { createAudioResampler } from "./resampler.mjs";
-import { createAudioDenoiser } from "./denoiser.mjs";
+import createAudioPacketizer from "./packetizer.mjs";
+import createAudioResampler from "./resampler.mjs";
+import createAudioDenoiser from "./denoiser.mjs";
 
-export function createNoisePipeline({
+export default function createNoisePipeline({
   rnnoise,
   rnnoiseMix = 1,
   onPacket,

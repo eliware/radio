@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { getBroadcastifySettings } from "../../src/broadcastify/settings.mjs";
+import getBroadcastifySettings from "../../src/broadcastify/settings.mjs";
 
 const valid = {
   BROADCASTIFY_ENABLED: "true",

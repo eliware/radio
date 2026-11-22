@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { knownSecrets } from "../../src/logging/secrets.mjs";
-import { prepareRadioConfiguration } from "../../src/radio/configuration.mjs";
+import prepareRadioConfiguration from "../../src/radio/configuration.mjs";
 
 const config = (serial, channel, port) => ({
   CHANNEL: channel,

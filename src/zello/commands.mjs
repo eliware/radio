@@ -1,6 +1,6 @@
-import { listenForZelloResponses } from "./responses.mjs";
+import listenForZelloResponses from "./responses.mjs";
 
-export function createZelloCommands(socket, isOnline, isActive = () => true) {
+export default function createZelloCommands(socket, isOnline, isActive = () => true) {
   let sequence = 0;
   const waiting = new Map();
 

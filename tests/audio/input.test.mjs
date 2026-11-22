@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioInput } from "../../src/audio/input.mjs";
+import createAudioInput from "../../src/audio/input.mjs";
 
 test("connects UDP input to the transmission and closes both resources", async () => {
   const events = [];

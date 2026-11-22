@@ -1,6 +1,6 @@
 import { createSocket } from "node:dgram";
 
-export function createUdpInput({
+export default function createUdpInput({
   port,
   onMessage,
   onError = () => {},

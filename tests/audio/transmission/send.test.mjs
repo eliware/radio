@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createTransmissionSend } from "../../../src/audio/transmission/send.mjs";
+import createTransmissionSend from "../../../src/audio/transmission/send.mjs";
 
 function setup({ healthy = true, streamId = 4, write = jest.fn() } = {}) {
   const recovery = {

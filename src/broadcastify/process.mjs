@@ -1,6 +1,6 @@
-import { sanitizeBroadcastifyStderr } from "./stderr-sanitizer.mjs";
+import sanitizeBroadcastifyStderr from "./stderr-sanitizer.mjs";
 
-export function monitorBroadcastifyProcess(
+export default function monitorBroadcastifyProcess(
   child,
   { settings, isCurrent, isClosed, onError, onSpawn, onProcessError, onClose },
 ) {

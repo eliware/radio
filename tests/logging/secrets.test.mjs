@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { knownSecrets, rememberSecrets } from "../../src/logging/secrets.mjs";
+import rememberSecrets, { knownSecrets } from "../../src/logging/secrets.mjs";
 
 test("registers credentials and releases them when a runtime ends", () => {
   const release = rememberSecrets([

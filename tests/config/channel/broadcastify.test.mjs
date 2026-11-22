@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { validateChannelBroadcastifySettings } from "../../../src/config/channel/broadcastify.mjs";
+import validateChannelBroadcastifySettings from "../../../src/config/channel/broadcastify.mjs";
 
 const valid = {
   CHANNEL: "Police",

@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createPcmFrameBuffer } from "../../../src/audio/denoiser/buffer.mjs";
+import createPcmFrameBuffer from "../../../src/audio/denoiser/buffer.mjs";
 
 test("combines chunks into complete PCM frames", () => {
   const buffer = createPcmFrameBuffer(4);

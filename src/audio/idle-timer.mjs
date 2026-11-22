@@ -1,4 +1,10 @@
-export function createAudioIdleTimer({ idleMs, now, setTimeoutImpl, clearTimeoutImpl, onIdle }) {
+export default function createAudioIdleTimer({
+  idleMs,
+  now,
+  setTimeoutImpl,
+  clearTimeoutImpl,
+  onIdle,
+}) {
   let timer;
   let lastActivity = 0;
   return {

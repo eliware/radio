@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createSessionSupervisor } from "../src/session-supervisor.mjs";
+import createSessionSupervisor from "../src/session-supervisor.mjs";
 
 const quietLog = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 

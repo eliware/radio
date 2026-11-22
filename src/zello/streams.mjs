@@ -1,6 +1,6 @@
-import { codecHeader } from "../audio/codec.mjs";
+import codecHeader from "../audio/codec.mjs";
 
-export function createZelloStreams(channel) {
+export default function createZelloStreams(channel) {
   let request;
   return {
     setRequest(nextRequest) {

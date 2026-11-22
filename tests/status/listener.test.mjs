@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { readStatusPort, startStatusListener } from "../../src/status/listener.mjs";
+import startStatusListener from "../../src/status/listener.mjs";
+import readStatusPort from "../../src/status/read-port.mjs";
 
 function fakeServer(fail = false) {
   const server = new EventEmitter();

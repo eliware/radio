@@ -1,6 +1,8 @@
 import { expect, test } from "@jest/globals";
 import { FRAME_BYTES, FRAME_SAMPLES } from "../../src/audio/codec.mjs";
-import { createEncoder, encodeFloatFrame, encodePcmFrame } from "../../src/audio/encoder.mjs";
+import createEncoder from "../../src/audio/encoder.mjs";
+import encodeFloatFrame from "../../src/audio/encode/float-frame.mjs";
+import encodePcmFrame from "../../src/audio/encode/pcm-frame.mjs";
 
 test("encodes 20 ms float and PCM frames and rejects incorrect sizes", () => {
   const encoder = createEncoder();

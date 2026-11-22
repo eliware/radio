@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createDenoiserFrameProcessor } from "../../../src/audio/denoiser/frame-processor.mjs";
+import createDenoiserFrameProcessor from "../../../src/audio/denoiser/frame-processor.mjs";
 
 test("converts signed PCM, mixes denoised samples, and clamps output", () => {
   const seen = [];

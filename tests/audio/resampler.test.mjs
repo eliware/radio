@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createAudioResampler } from "../../src/audio/resampler.mjs";
+import createAudioResampler from "../../src/audio/resampler.mjs";
 
 function createStreamHarness(streams) {
   return () => {

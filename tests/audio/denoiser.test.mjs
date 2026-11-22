@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioDenoiser } from "../../src/audio/denoiser.mjs";
+import createAudioDenoiser from "../../src/audio/denoiser.mjs";
 
 function makeRnnoise(processFrame = () => {}) {
   return {

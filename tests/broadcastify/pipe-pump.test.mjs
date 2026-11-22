@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyPipePump } from "../../src/broadcastify/pipe-pump.mjs";
+import createBroadcastifyPipePump from "../../src/broadcastify/pipe-pump.mjs";
 
 function childProcess() {
   const stdin = Object.assign(new EventEmitter(), {

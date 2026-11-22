@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
-import { hasAuthorizedUsbSerial } from "./device-sysfs.mjs";
+import hasAuthorizedUsbSerial from "./device-sysfs.mjs";
 
-export function createUsbDeviceLookup(filesystem = { readdir, readFile }) {
+export default function createUsbDeviceLookup(filesystem = { readdir, readFile }) {
   return (serial, root = "/sys/bus/usb/devices") =>
     hasAuthorizedUsbSerial(serial, root, filesystem);
 }

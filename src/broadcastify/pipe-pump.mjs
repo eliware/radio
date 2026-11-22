@@ -1,6 +1,6 @@
 const maxBufferedBytes = 96000;
 
-export function createBroadcastifyPipePump({ getChild, nextPcm, onError }) {
+export default function createBroadcastifyPipePump({ getChild, nextPcm, onError }) {
   let reportedPipeIssue = false;
 
   return () => {

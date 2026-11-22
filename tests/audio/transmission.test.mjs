@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioTransmission } from "../../src/audio/transmission.mjs";
+import createAudioTransmission from "../../src/audio/transmission.mjs";
 const rnnoise = {
   frameSize: 480,
   createDenoiseState: () => ({ processFrame: () => 0, destroy: () => {} }),

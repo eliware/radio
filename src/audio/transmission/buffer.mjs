@@ -2,7 +2,7 @@ import { FRAME_SAMPLES } from "../codec.mjs";
 
 const frameBytes = (FRAME_SAMPLES / 3) * 4;
 
-export function createTransmissionBuffer() {
+export default function createTransmissionBuffer() {
   let chunks = [];
   let length = 0;
 

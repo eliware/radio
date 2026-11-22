@@ -1,6 +1,7 @@
 import { expect, test } from "@jest/globals";
-import { errorDetails, redactErrorText } from "../../src/logging/error-details.mjs";
-import { knownSecrets, rememberSecrets } from "../../src/logging/secrets.mjs";
+import errorDetails from "../../src/logging/error-details.mjs";
+import redactErrorText from "../../src/logging/redact-error-text.mjs";
+import rememberSecrets, { knownSecrets } from "../../src/logging/secrets.mjs";
 
 test("remembers channel credentials and redacts error messages and stacks", () => {
   const release = rememberSecrets([

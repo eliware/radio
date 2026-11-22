@@ -1,6 +1,6 @@
-import { createBroadcastifyPipePump } from "./pipe-pump.mjs";
+import createBroadcastifyPipePump from "./pipe-pump.mjs";
 
-export function createBroadcastifyStreamPump({
+export default function createBroadcastifyStreamPump({
   queue,
   getChild,
   onError,

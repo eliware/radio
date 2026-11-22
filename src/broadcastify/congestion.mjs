@@ -1,4 +1,4 @@
-export function createPcmCongestionPolicy(queue, onError, maxQueuedBytes = 960000) {
+export default function createPcmCongestionPolicy(queue, onError, maxQueuedBytes = 960000) {
   let congested = false;
   return {
     write(pcm) {

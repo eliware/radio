@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyStability } from "../../src/broadcastify/stability.mjs";
+import createBroadcastifyStability from "../../src/broadcastify/stability.mjs";
 
 test("calls the stable handler after the configured interval", () => {
   let timer;

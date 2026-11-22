@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createAudioIdleTimer } from "../../src/audio/idle-timer.mjs";
+import createAudioIdleTimer from "../../src/audio/idle-timer.mjs";
 
 test("tracks activity, schedules idle work, and cancels timers", () => {
   let now = 0;

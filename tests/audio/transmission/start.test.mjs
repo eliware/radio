@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createTransmissionStart } from "../../../src/audio/transmission/start.mjs";
+import createTransmissionStart from "../../../src/audio/transmission/start.mjs";
 
 function dependencies(overrides = {}) {
   const timers = [];

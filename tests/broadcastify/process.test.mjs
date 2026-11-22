@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { monitorBroadcastifyProcess } from "../../src/broadcastify/process.mjs";
+import monitorBroadcastifyProcess from "../../src/broadcastify/process.mjs";
 
 function setup(overrides = {}) {
   const child = new EventEmitter();

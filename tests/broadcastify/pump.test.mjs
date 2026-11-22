@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyStreamPump } from "../../src/broadcastify/pump.mjs";
+import createBroadcastifyStreamPump from "../../src/broadcastify/pump.mjs";
 
 test("clears the queue while the child is unavailable and cancels its timer", () => {
   let tick;

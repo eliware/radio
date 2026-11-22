@@ -1,4 +1,4 @@
-export function createAudioStreamRecovery({
+export default function createAudioStreamRecovery({
   session,
   onError,
   now,

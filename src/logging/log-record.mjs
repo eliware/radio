@@ -1,6 +1,6 @@
 import { defaultPolicy } from "@eliware/common";
-import { redactErrorText } from "./error-details.mjs";
-import { sanitizeMetadata } from "./metadata.mjs";
+import redactErrorText from "./redact-error-text.mjs";
+import sanitizeMetadata from "./metadata.mjs";
 
 export const privateKeys = [
   ...defaultPolicy.keys,
@@ -12,7 +12,7 @@ export const privateKeys = [
   "api_key",
 ];
 
-export function createSanitizedLogger(base, secrets) {
+export default function createSanitizedLogger(base, secrets) {
   const methods = ["debug", "info", "warn", "error"];
   return Object.fromEntries(
     methods.map((method) => [

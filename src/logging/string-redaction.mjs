@@ -1,6 +1,6 @@
-import { redactErrorText } from "./error-details.mjs";
+import redactErrorText from "./redact-error-text.mjs";
 
-export function redactStrings(value, secrets) {
+export default function redactStrings(value, secrets) {
   if (typeof value === "string") return redactErrorText(value, secrets);
   if (Array.isArray(value)) return value.map((item) => redactStrings(item, secrets));
   if (value && typeof value === "object") {

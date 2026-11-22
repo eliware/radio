@@ -1,9 +1,10 @@
-import { errorDetails } from "../logging/error-details.mjs";
-import { releaseSecretsAndRedact } from "../logging/safe-error.mjs";
-import { rememberSecrets } from "../logging/secrets.mjs";
-import { createAirbandConfig, validateAirbandChannels } from "../airband/config.mjs";
+import errorDetails from "../logging/error-details.mjs";
+import releaseSecretsAndRedact from "../logging/release-secrets-and-redact.mjs";
+import rememberSecrets from "../logging/secrets.mjs";
+import createAirbandConfig from "../airband/config.mjs";
+import validateAirbandChannels from "../airband/validate-channels.mjs";
 
-export async function prepareRadioConfiguration({
+export default async function prepareRadioConfiguration({
   configPaths,
   airbandPath,
   loadConfig,

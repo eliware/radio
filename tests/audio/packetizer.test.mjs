@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { FRAME_BYTES } from "../../src/audio/codec.mjs";
-import { createAudioPacketizer } from "../../src/audio/packetizer.mjs";
+import createAudioPacketizer from "../../src/audio/packetizer.mjs";
 
 function createEncoderHarness() {
   const encode = jest.fn((frame) => Buffer.from(frame.subarray(0, 3)));

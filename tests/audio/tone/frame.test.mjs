@@ -1,5 +1,6 @@
 import { expect, test } from "@jest/globals";
-import { createStartupToneFrames, createToneFrame } from "../../../src/audio/tone/frame.mjs";
+import createToneFrame from "../../../src/audio/tone/frame.mjs";
+import createStartupToneFrames from "../../../src/audio/tone/startup-frames.mjs";
 import { FRAME_SAMPLES, SAMPLE_RATE } from "../../../src/audio/codec.mjs";
 
 test("creates the requested tone as 48 kHz float PCM", () => {

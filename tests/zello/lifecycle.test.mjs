@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createZelloLifecycle } from "../../src/zello/lifecycle.mjs";
+import createZelloLifecycle from "../../src/zello/lifecycle.mjs";
 
 class Socket extends EventEmitter {
   static OPEN = 1;

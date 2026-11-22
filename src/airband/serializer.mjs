@@ -1,4 +1,4 @@
-export function serializeAirbandConfig(channels) {
+export default function serializeAirbandConfig(channels) {
   const groups = Map.groupBy(channels, ({ SDR_SERIAL }) => SDR_SERIAL);
   const devices = [...groups].map(([serial, group]) => {
     const frequencies = group.map(({ FREQUENCY_MHZ }) => Number(FREQUENCY_MHZ));

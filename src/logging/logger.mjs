@@ -1,9 +1,9 @@
 import { createLogger } from "@eliware/common";
 import { knownSecrets } from "./secrets.mjs";
-import { createSanitizedLogger, privateKeys } from "./log-record.mjs";
-import { validateLogLevel } from "./level.mjs";
+import createSanitizedLogger, { privateKeys } from "./log-record.mjs";
+import validateLogLevel from "./level.mjs";
 
-export function createRadioLogger({
+export default function createRadioLogger({
   level = String(process.env.LOG_LEVEL ?? "info").toLowerCase(),
   secrets = knownSecrets,
   createLoggerImpl = createLogger,

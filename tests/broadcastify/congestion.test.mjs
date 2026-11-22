@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
-import { createPcmQueue } from "../../src/broadcastify/pcm-queue.mjs";
-import { createPcmCongestionPolicy } from "../../src/broadcastify/congestion.mjs";
+import createPcmQueue from "../../src/broadcastify/pcm-queue.mjs";
+import createPcmCongestionPolicy from "../../src/broadcastify/congestion.mjs";
 
 test("bounds the backlog, reports congestion once, and resets after draining", () => {
   const onError = jest.fn();

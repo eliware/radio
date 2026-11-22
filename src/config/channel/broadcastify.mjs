@@ -1,7 +1,7 @@
-import { getBroadcastifySettings } from "../../broadcastify/settings.mjs";
-import { validateChannelSettings } from "./validator.mjs";
+import getBroadcastifySettings from "../../broadcastify/settings.mjs";
+import validateChannelSettings from "./validator.mjs";
 
-export function validateChannelBroadcastifySettings(values) {
+export default function validateChannelBroadcastifySettings(values) {
   validateChannelSettings(values);
   getBroadcastifySettings(values);
   return values;

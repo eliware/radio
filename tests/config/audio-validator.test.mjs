@@ -1,6 +1,6 @@
 import { parseEnv } from "node:util";
 import { expect, test } from "@jest/globals";
-import { validateAudioSettings } from "../../src/config/audio-validator.mjs";
+import validateAudioSettings from "../../src/config/audio-validator.mjs";
 
 test("validates tone and defaults or normalizes RNNoise strength", () => {
   expect(validateAudioSettings({ TONE: "1000" }).RNNOISE).toBe("100");

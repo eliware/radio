@@ -1,4 +1,4 @@
-export function createTransmissionSendRecovery({
+export default function createTransmissionSendRecovery({
   session,
   recovery,
   buffer,

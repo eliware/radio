@@ -1,6 +1,6 @@
 import { FRAME_SAMPLES, SAMPLE_RATE } from "../codec.mjs";
 
-export function createToneFrame(frequency, frameIndex) {
+export default function createToneFrame(frequency, frameIndex) {
   const frame = Buffer.alloc(FRAME_SAMPLES * 4);
   for (let i = 0; i < FRAME_SAMPLES; i += 1) {
     const sample =
@@ -8,9 +8,4 @@ export function createToneFrame(frequency, frameIndex) {
     frame.writeFloatLE(sample, i * 4);
   }
   return frame;
-}
-
-export function* createStartupToneFrames(frequency, frameCount = 50) {
-  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1)
-    yield createToneFrame(frequency, frameIndex);
 }

@@ -2,7 +2,7 @@ import { sign } from "node:crypto";
 
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
 
-export function createAuthToken({ issuer, privateKey }, now = Date.now()) {
+export default function createAuthToken({ issuer, privateKey }, now = Date.now()) {
   if (!issuer || !privateKey?.includes("PRIVATE KEY"))
     throw new Error("Zello signing credentials missing");
   const header = encode({ alg: "RS256", typ: "JWT" });

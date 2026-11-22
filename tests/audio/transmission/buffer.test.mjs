@@ -1,6 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { FRAME_SAMPLES } from "../../../src/audio/codec.mjs";
-import { createTransmissionBuffer } from "../../../src/audio/transmission/buffer.mjs";
+import createTransmissionBuffer from "../../../src/audio/transmission/buffer.mjs";
 
 test("accumulates PCM and flushes complete frames", () => {
   const buffer = createTransmissionBuffer();

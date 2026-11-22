@@ -1,6 +1,6 @@
 import { expect, test } from "@jest/globals";
 import { path } from "@eliware/common";
-import { getRuntimePaths } from "../src/runtime-paths.mjs";
+import getRuntimePaths from "../src/runtime-paths.mjs";
 
 test("defaults config files relative to this ESM module", () => {
   const { configPaths } = getRuntimePaths({}, "/tmp");

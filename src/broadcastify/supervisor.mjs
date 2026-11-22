@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
-import { createFfmpegArgs } from "./ffmpeg-args.mjs";
-import { createBroadcastifyRetry } from "./retry.mjs";
-import { createBroadcastifyStability } from "./stability.mjs";
-import { monitorBroadcastifyProcess } from "./process.mjs";
-import { shutdownBroadcastifyProcess } from "./shutdown.mjs";
+import createFfmpegArgs from "./ffmpeg-args.mjs";
+import createBroadcastifyRetry from "./retry.mjs";
+import createBroadcastifyStability from "./stability.mjs";
+import monitorBroadcastifyProcess from "./process.mjs";
+import shutdownBroadcastifyProcess from "./shutdown.mjs";
 
-export function createBroadcastifySupervisor(
+export default function createBroadcastifySupervisor(
   settings,
   {
     spawnProcess = spawn,

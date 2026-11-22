@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { registerRadioShutdown } from "../src/radio-shutdown.mjs";
+import registerRadioShutdown from "../src/radio-shutdown.mjs";
 
 function setup({ runtime, server, rejectShutdown } = {}) {
   const processImpl = new EventEmitter();

@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { validateRequiredChannelCredentials } from "../../../src/config/channel/required.mjs";
+import validateRequiredChannelCredentials from "../../../src/config/channel/required.mjs";
 
 const valid = {
   CHANNEL: "Police",

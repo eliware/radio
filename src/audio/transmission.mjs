@@ -1,10 +1,10 @@
-import { createNoisePipeline } from "./noise-pipeline.mjs";
-import { createAudioStreamRecovery } from "./transmission/recovery.mjs";
-import { createTransmissionIdle } from "./transmission/idle.mjs";
-import { createTransmissionBuffer } from "./transmission/buffer.mjs";
-import { createTransmissionStart } from "./transmission/start.mjs";
-import { createTransmissionSend } from "./transmission/send.mjs";
-export function createAudioTransmission({
+import createNoisePipeline from "./noise-pipeline.mjs";
+import createAudioStreamRecovery from "./transmission/recovery.mjs";
+import createTransmissionIdle from "./transmission/idle.mjs";
+import createTransmissionBuffer from "./transmission/buffer.mjs";
+import createTransmissionStart from "./transmission/start.mjs";
+import createTransmissionSend from "./transmission/send.mjs";
+export default function createAudioTransmission({
   session,
   rnnoise,
   rnnoiseMix = 1,

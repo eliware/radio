@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { generateKeyPairSync } from "node:crypto";
-import { createZelloSession } from "../../src/zello/session.mjs";
+import createZelloSession from "../../src/zello/session.mjs";
 
 class FakeSocket extends EventEmitter {
   static OPEN = 1;

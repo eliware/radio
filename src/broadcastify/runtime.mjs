@@ -1,8 +1,8 @@
-import { getBroadcastifySettings } from "./settings.mjs";
-import { createBroadcastifyStream } from "./stream.mjs";
-import { createBroadcastifySupervisor } from "./supervisor.mjs";
+import getBroadcastifySettings from "./settings.mjs";
+import createBroadcastifyStream from "./stream.mjs";
+import createBroadcastifySupervisor from "./supervisor.mjs";
 
-export async function createBroadcastifyRuntime(
+export default async function createBroadcastifyRuntime(
   configs,
   createStream = createBroadcastifyStream,
   onError = () => {},

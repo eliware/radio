@@ -1,6 +1,6 @@
-import { errorDetails } from "./logging/error-details.mjs";
+import errorDetails from "./logging/error-details.mjs";
 
-export function registerRadioShutdown({
+export default function registerRadioShutdown({
   processImpl,
   registerHandlersImpl,
   registerSignalsImpl,

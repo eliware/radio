@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifySupervisor } from "../../src/broadcastify/supervisor.mjs";
+import createBroadcastifySupervisor from "../../src/broadcastify/supervisor.mjs";
 
 function childProcess() {
   const child = new EventEmitter();

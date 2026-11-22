@@ -1,5 +1,6 @@
 import { expect, test } from "@jest/globals";
-import { createAirbandConfig, validateAirbandChannels } from "../../src/airband/config.mjs";
+import createAirbandConfig from "../../src/airband/config.mjs";
+import validateAirbandChannels from "../../src/airband/validate-channels.mjs";
 
 const base = {
   SDR_SERIAL: "851",

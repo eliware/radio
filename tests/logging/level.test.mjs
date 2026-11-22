@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { validateLogLevel } from "../../src/logging/level.mjs";
+import validateLogLevel from "../../src/logging/level.mjs";
 
 test.each(["debug", "info", "warn", "error"])("accepts the %s log level", (level) => {
   expect(validateLogLevel(level)).toBe(level);

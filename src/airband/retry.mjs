@@ -1,4 +1,4 @@
-export function createAirbandRetry({ initialDelayMs = 1000, maxDelayMs = 30000 } = {}) {
+export default function createAirbandRetry({ initialDelayMs = 1000, maxDelayMs = 30000 } = {}) {
   let delay = initialDelayMs;
   return {
     reset() {

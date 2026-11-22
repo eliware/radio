@@ -1,7 +1,7 @@
 import { logger as defaultLogger } from "./logger.mjs";
-import { sendStartupTone } from "./startup-tone.mjs";
+import sendStartupTone from "./startup-tone.mjs";
 
-export function createSessionSupervisor(
+export default function createSessionSupervisor(
   channels,
   { wait, onError, log = defaultLogger, playTone = sendStartupTone },
 ) {

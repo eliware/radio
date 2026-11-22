@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createBroadcastifyRuntime } from "../../src/broadcastify/runtime.mjs";
+import createBroadcastifyRuntime from "../../src/broadcastify/runtime.mjs";
 
 test("coordinates stream creation, supervisor readiness, status, and shutdown", async () => {
   const child = { id: 1 };

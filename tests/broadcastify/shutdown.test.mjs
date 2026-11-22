@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { shutdownBroadcastifyProcess } from "../../src/broadcastify/shutdown.mjs";
+import shutdownBroadcastifyProcess from "../../src/broadcastify/shutdown.mjs";
 
 function childProcess(kill) {
   const process = new EventEmitter();

@@ -1,8 +1,8 @@
 import { createServer } from "node:http";
 import { logger as defaultLogger } from "../logger.mjs";
-import { createStatusResponse } from "./response.mjs";
+import createStatusResponse from "./response.mjs";
 
-export function createStatusServer(runtime, log = defaultLogger) {
+export default function createStatusServer(runtime, log = defaultLogger) {
   return createServer((request, response) => {
     const health = request.url === "/health";
     const ready = request.url === "/ready";

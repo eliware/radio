@@ -2,7 +2,7 @@ services:
   radio:
     build:
       context: .
-      dockerfile: docker/radio/Dockerfile
+      dockerfile: Dockerfile
     environment:
       RADIO_HEALTH_PORT: 1400
       RADIO_CONFIG_FILES: '["/run/radio/channel.env"]'

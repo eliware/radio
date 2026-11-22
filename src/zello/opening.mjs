@@ -1,4 +1,4 @@
-export function createZelloOpening(socket, closedState) {
+export default function createZelloOpening(socket, closedState) {
   const opening = new Promise((resolve, reject) => {
     const cleanup = () => {
       socket.off("open", opened);

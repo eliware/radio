@@ -1,7 +1,8 @@
 import { FRAME_BYTES } from "./codec.mjs";
-import { createEncoder, encodePcmFrame } from "./encoder.mjs";
+import createEncoder from "./encoder.mjs";
+import encodePcmFrame from "./encode/pcm-frame.mjs";
 
-export function createAudioPacketizer({ onPacket, createEncoderImpl = createEncoder }) {
+export default function createAudioPacketizer({ onPacket, createEncoderImpl = createEncoder }) {
   const encoder = createEncoderImpl();
   const frameBytes = FRAME_BYTES / 2;
   const pending = Buffer.alloc(frameBytes);

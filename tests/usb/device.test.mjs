@@ -1,5 +1,5 @@
 import { expect, test, jest } from "@jest/globals";
-import { createUsbDeviceLookup } from "../../src/usb/device.mjs";
+import createUsbDeviceLookup from "../../src/usb/device.mjs";
 
 test("looks up an assigned USB dongle through the public helper", async () => {
   const filesystem = {

@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createStatusServer } from "../../src/status/server.mjs";
+import createStatusServer from "../../src/status/server.mjs";
 
 async function fetchStatus(
   ready,

@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createPcmQueue } from "../../src/broadcastify/pcm-queue.mjs";
+import createPcmQueue from "../../src/broadcastify/pcm-queue.mjs";
 
 test("returns silence when empty and drains queued PCM in order", () => {
   const queue = createPcmQueue();

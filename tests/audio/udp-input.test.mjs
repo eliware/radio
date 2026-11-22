@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { createUdpInput } from "../../src/audio/udp-input.mjs";
+import createUdpInput from "../../src/audio/udp-input.mjs";
 
 class FakeSocket extends EventEmitter {
   bind(port, _host, callback) {

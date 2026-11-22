@@ -1,4 +1,8 @@
-export function createBroadcastifyStability({ onStable, setTimeoutImpl, clearTimeoutImpl }) {
+export default function createBroadcastifyStability({
+  onStable,
+  setTimeoutImpl,
+  clearTimeoutImpl,
+}) {
   let timer;
   return {
     observe(durationMs) {

@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createSanitizedLogger, privateKeys } from "../../src/logging/log-record.mjs";
+import createSanitizedLogger, { privateKeys } from "../../src/logging/log-record.mjs";
 
 test("redacts secrets from log messages and nested metadata", () => {
   const records = [];

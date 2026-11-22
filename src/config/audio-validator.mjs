@@ -4,7 +4,7 @@ function required(values, name) {
   return value;
 }
 
-export function validateAudioSettings(values) {
+export default function validateAudioSettings(values) {
   const tone = Number(required(values, "TONE"));
   if (!Number.isFinite(tone) || tone < 200 || tone > 3000) throw new Error("TONE is invalid");
   const rnnoise = Number(values.RNNOISE ?? 100);

@@ -1,6 +1,6 @@
 import { parseEnv } from "node:util";
 import { expect, test } from "@jest/globals";
-import { validateChannelCredentials } from "../../../src/config/channel/credentials.mjs";
+import validateChannelCredentials from "../../../src/config/channel/credentials.mjs";
 
 const valid = {
   CHANNEL: "Police",

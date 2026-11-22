@@ -1,5 +1,5 @@
 import { afterEach, expect, jest, test } from "@jest/globals";
-import { loadRnnoise } from "../../src/audio/rnnoise.mjs";
+import loadRnnoise from "../../src/audio/rnnoise.mjs";
 
 const savedWindow = globalThis.window;
 afterEach(() => {

@@ -1,4 +1,4 @@
-export function createPcmFrameBuffer(frameBytes) {
+export default function createPcmFrameBuffer(frameBytes) {
   const buffered = Buffer.alloc(frameBytes);
   let bufferedBytes = 0;
 

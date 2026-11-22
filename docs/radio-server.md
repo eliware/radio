@@ -2,7 +2,7 @@
 
 Radio forwards one or more local NBFM receiver channels to separate Zello channels. One Docker
 container runs the Node.js supervisor, RTLSDR-Airband, audio processing, and all Zello connections.
-The image uses Node.js 26 on Debian Bookworm Slim.
+The image uses CentOS Stream 10 with Node.js 26.13.1 from the Eliware CentOS 10 Node.js base image.
 
 ## What it does
 

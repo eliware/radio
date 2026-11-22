@@ -1,5 +1,5 @@
-import { readChannelConfigFile } from "../src/config/file-reader.mjs";
-import { loadChannelConfig } from "../src/channel-config.mjs";
+import readChannelConfigFile from "../src/config/file-reader.mjs";
+import loadChannelConfig from "../src/channel-config.mjs";
 
 const source = (patch = "") =>
   `CHANNEL=Police\nUSERNAME=radio\nPASSWORD=pw\nISSUER=issuer\nSDR_SERIAL=851\nUDP_PORT=15581\nFREQUENCY_MHZ=155.1\nCTCSS_HZ=77.0\nTONE=1000\nPRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"\n${patch}`;

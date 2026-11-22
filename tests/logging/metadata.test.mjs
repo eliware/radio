@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { sanitizeMetadata } from "../../src/logging/metadata.mjs";
+import sanitizeMetadata from "../../src/logging/metadata.mjs";
 
 test("serializes metadata and redacts sensitive keys", () => {
   expect(

@@ -1,4 +1,4 @@
-export function convertFloatPcmToS16le(floatPcm) {
+export default function convertFloatPcmToS16le(floatPcm) {
   const pcm = Buffer.alloc(floatPcm.length / 2);
   for (let i = 0; i < floatPcm.length / 4; i += 1) {
     const value = floatPcm.readFloatLE(i * 4);

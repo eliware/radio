@@ -1,7 +1,7 @@
 export const knownSecrets = [];
 const secretReferences = new Map();
 
-export function rememberSecrets(configs) {
+export default function rememberSecrets(configs) {
   const secrets = configs
     .flatMap((config) => [
       config.PASSWORD,

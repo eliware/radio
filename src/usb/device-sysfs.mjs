@@ -1,4 +1,4 @@
-export async function hasAuthorizedUsbSerial(serial, root, filesystem) {
+export default async function hasAuthorizedUsbSerial(serial, root, filesystem) {
   let devices;
   try {
     devices = await filesystem.readdir(root);

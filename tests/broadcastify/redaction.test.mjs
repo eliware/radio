@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { redactBroadcastifyText } from "../../src/broadcastify/redaction.mjs";
+import redactBroadcastifyText from "../../src/broadcastify/redaction.mjs";
 
 test("redacts mount paths and Icecast URLs", () => {
   expect(redactBroadcastifyText("Mount /feed failed at icecast://source@host/feed", "/feed")).toBe(

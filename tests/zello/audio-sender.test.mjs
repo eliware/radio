@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createZelloAudioSender } from "../../src/zello/audio-sender.mjs";
+import createZelloAudioSender from "../../src/zello/audio-sender.mjs";
 
 test("sends a binary packet with stream and sequence headers", () => {
   const socket = { readyState: 1, send: jest.fn() };

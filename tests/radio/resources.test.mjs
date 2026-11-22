@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { closeRadioResources } from "../../src/radio/resources.mjs";
+import closeRadioResources from "../../src/radio/resources.mjs";
 
 test("settles all startup resources while preserving the startup error", async () => {
   const closeInputFailure = jest.fn(() => {

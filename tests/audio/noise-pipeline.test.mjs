@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { createNoisePipeline } from "../../src/audio/noise-pipeline.mjs";
+import createNoisePipeline from "../../src/audio/noise-pipeline.mjs";
 
 function makeRnnoise(processFrame = () => 0) {
   return {

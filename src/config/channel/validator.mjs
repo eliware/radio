@@ -1,5 +1,5 @@
-import { validateChannelCredentials } from "./credentials.mjs";
-import { validateSdrSettings } from "./sdr.mjs";
+import validateChannelCredentials from "./credentials.mjs";
+import validateSdrSettings from "./sdr.mjs";
 
 const requiredFields = [
   "CHANNEL",
@@ -27,7 +27,7 @@ const allowedFields = new Set([
   "PUBLIC_KEY",
 ]);
 
-export function validateChannelSettings(values) {
+export default function validateChannelSettings(values) {
   const unknown = Object.keys(values).find((name) => !allowedFields.has(name));
   if (unknown) throw new Error(`${unknown} is not a supported channel setting`);
   validateChannelCredentials(values);

@@ -1,4 +1,4 @@
-export function createTransmissionStart({
+export default function createTransmissionStart({
   session,
   recovery,
   finishTransmission,

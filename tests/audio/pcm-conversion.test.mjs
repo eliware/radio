@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { convertFloatPcmToS16le } from "../../src/audio/pcm-conversion.mjs";
+import convertFloatPcmToS16le from "../../src/audio/pcm-conversion.mjs";
 
 test("converts and clips float samples into signed 16-bit little-endian PCM", () => {
   const input = Buffer.alloc(16);

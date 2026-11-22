@@ -1,7 +1,8 @@
-import { createEncoder, encodeFloatFrame } from "./audio/encoder.mjs";
-import { createStartupToneFrames } from "./audio/tone/frame.mjs";
+import createEncoder from "./audio/encoder.mjs";
+import encodeFloatFrame from "./audio/encode/float-frame.mjs";
+import createStartupToneFrames from "./audio/tone/startup-frames.mjs";
 
-export async function sendStartupTone(
+export default async function sendStartupTone(
   session,
   frequency,
   wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),

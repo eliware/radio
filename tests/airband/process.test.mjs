@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { expect, jest, test } from "@jest/globals";
-import { startAirbandProcess } from "../../src/airband/process.mjs";
+import startAirbandProcess from "../../src/airband/process.mjs";
 
 function setup({ kill = jest.fn(), timers = [] } = {}) {
   const child = new EventEmitter();

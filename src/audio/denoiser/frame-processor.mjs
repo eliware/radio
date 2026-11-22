@@ -1,4 +1,9 @@
-export function createDenoiserFrameProcessor({ frameSize, processFrame, rnnoiseMix, onPcm }) {
+export default function createDenoiserFrameProcessor({
+  frameSize,
+  processFrame,
+  rnnoiseMix,
+  onPcm,
+}) {
   const frameBytes = frameSize * 2;
 
   return (buffered) => {

@@ -1,4 +1,4 @@
-export function createFfmpegArgs(settings) {
+export default function createFfmpegArgs(settings) {
   const target = `icecast://source:${encodeURIComponent(settings.password)}@${settings.host}:${settings.port}${settings.mount}`;
   return [
     "-hide_banner",

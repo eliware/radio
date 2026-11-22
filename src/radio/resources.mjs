@@ -1,4 +1,4 @@
-export async function closeRadioResources(
+export default async function closeRadioResources(
   { inputs = [], broadcastify, sessions, airband },
   { ignoreErrors = false } = {},
 ) {

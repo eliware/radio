@@ -1,4 +1,4 @@
-export async function waitForAirbandDevices(
+export default async function waitForAirbandDevices(
   configs,
   { present, wait, shouldStop = () => false, onMissing = () => {} },
 ) {

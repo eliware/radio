@@ -6,7 +6,7 @@ function required(values, name) {
   return value;
 }
 
-export function validateSdrSettings(values) {
+export default function validateSdrSettings(values) {
   required(values, "SDR_SERIAL");
   required(values, "UDP_PORT");
   if (!/^[a-zA-Z0-9_-]+$/.test(values.SDR_SERIAL)) throw new Error("SDR_SERIAL is invalid");

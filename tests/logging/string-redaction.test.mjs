@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { redactStrings } from "../../src/logging/string-redaction.mjs";
+import redactStrings from "../../src/logging/string-redaction.mjs";
 
 test("redacts matching strings recursively in arrays and objects", () => {
   expect(

@@ -1,4 +1,4 @@
-export function getRadioConfigFiles(env, defaultPath) {
+export default function getRadioConfigFiles(env, defaultPath) {
   const configPaths = env.RADIO_CONFIG_FILES ? JSON.parse(env.RADIO_CONFIG_FILES) : [defaultPath];
   if (
     !Array.isArray(configPaths) ||

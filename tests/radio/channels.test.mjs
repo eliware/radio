@@ -1,5 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
-import { createRadioChannels, createRadioInputs } from "../../src/radio/channels.mjs";
+import createRadioChannels from "../../src/radio/channels.mjs";
+import createRadioInputs from "../../src/radio/inputs.mjs";
 
 test("creates one named channel with a session per config", () => {
   const configs = [{ CHANNEL: "PD" }, { CHANNEL: "FD" }];

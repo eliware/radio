@@ -1,4 +1,4 @@
-export function startAirbandProcess({
+export default function startAirbandProcess({
   configPath,
   serials,
   log,

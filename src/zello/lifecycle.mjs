@@ -1,6 +1,6 @@
-import { createZelloConnection } from "./connection.mjs";
+import createZelloConnection from "./connection.mjs";
 
-export function createZelloLifecycle(WebSocketImpl) {
+export default function createZelloLifecycle(WebSocketImpl) {
   let connection;
   let online = false;
 

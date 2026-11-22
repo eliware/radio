@@ -1,6 +1,6 @@
-import { createTransmissionSendRecovery } from "./send-recovery.mjs";
+import createTransmissionSendRecovery from "./send-recovery.mjs";
 
-export function createTransmissionSend({
+export default function createTransmissionSend({
   session,
   rnnoise,
   rnnoiseMix,

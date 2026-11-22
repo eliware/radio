@@ -1,5 +1,5 @@
 import { generateKeyPairSync, verify } from "node:crypto";
-import { createAuthToken } from "../../src/zello/auth.mjs";
+import createAuthToken from "../../src/zello/auth.mjs";
 
 test("creates a one-hour RS256 production auth token", () => {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 1024 });

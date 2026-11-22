@@ -1,4 +1,4 @@
-export function createZelloAudioSender({ getSocket, isOnline, openState }) {
+export default function createZelloAudioSender({ getSocket, isOnline, openState }) {
   return (streamId, packet) => {
     const socket = getSocket();
     if (!isOnline() || socket.readyState !== openState) throw new Error("Zello is offline");

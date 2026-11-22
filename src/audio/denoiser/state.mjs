@@ -1,4 +1,4 @@
-export function createDenoiserState({ rnnoise, onError }) {
+export default function createDenoiserState({ rnnoise, onError }) {
   let state = rnnoise.createDenoiseState();
 
   return {

@@ -4,7 +4,7 @@ const required = (values, key) => {
   return value;
 };
 
-export function getBroadcastifySettings(values) {
+export default function getBroadcastifySettings(values) {
   const enabled = values.BROADCASTIFY_ENABLED ?? "false";
   if (!["true", "false"].includes(enabled))
     throw new Error("BROADCASTIFY_ENABLED must be true or false");

@@ -1,5 +1,5 @@
 const silence = Buffer.alloc(960);
-export function createPcmQueue() {
+export default function createPcmQueue() {
   const chunks = [];
   let queuedBytes = 0;
   return {

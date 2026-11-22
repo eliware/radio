@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { sanitizeBroadcastifyStderr } from "../../src/broadcastify/stderr-sanitizer.mjs";
+import sanitizeBroadcastifyStderr from "../../src/broadcastify/stderr-sanitizer.mjs";
 
 test("redacts source credentials, mount paths, and Icecast URLs", () => {
   const detail = sanitizeBroadcastifyStderr(

@@ -1,6 +1,7 @@
 import { expect, test } from "@jest/globals";
-import { redactError, releaseSecretsAndRedact } from "../../src/logging/safe-error.mjs";
-import { rememberSecrets } from "../../src/logging/secrets.mjs";
+import redactError from "../../src/logging/safe-error.mjs";
+import releaseSecretsAndRedact from "../../src/logging/release-secrets-and-redact.mjs";
+import rememberSecrets from "../../src/logging/secrets.mjs";
 
 test("redacts error message and stack while retaining its name", () => {
   const release = rememberSecrets([{ TOKEN: "private-token" }]);

@@ -1,7 +1,7 @@
-import { createAudioTransmission } from "./transmission.mjs";
-import { createUdpInput } from "./udp-input.mjs";
+import createAudioTransmission from "./transmission.mjs";
+import createUdpInput from "./udp-input.mjs";
 
-export function createAudioInput({
+export default function createAudioInput({
   port,
   session,
   rnnoise,

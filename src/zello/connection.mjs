@@ -1,8 +1,8 @@
-import { createZelloOpening } from "./opening.mjs";
+import createZelloOpening from "./opening.mjs";
 
 const URL = "wss://zello.io/ws";
 
-export function createZelloConnection(
+export default function createZelloConnection(
   WebSocketImpl,
   { onClose = () => {}, onError = () => {} } = {},
 ) {

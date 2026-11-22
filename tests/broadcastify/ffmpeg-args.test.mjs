@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createFfmpegArgs } from "../../src/broadcastify/ffmpeg-args.mjs";
+import createFfmpegArgs from "../../src/broadcastify/ffmpeg-args.mjs";
 
 test("builds a paced mono MP3 Icecast command and encodes credentials", () => {
   const args = createFfmpegArgs({

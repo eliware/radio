@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { jest } from "@jest/globals";
-import { createZelloConnection } from "../../src/zello/connection.mjs";
+import createZelloConnection from "../../src/zello/connection.mjs";
 
 class FakeSocket extends EventEmitter {
   static OPEN = 1;

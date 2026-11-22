@@ -1,5 +1,5 @@
 import { expect, test } from "@jest/globals";
-import { createRadioLogger } from "../../src/logging/logger.mjs";
+import createRadioLogger from "../../src/logging/logger.mjs";
 
 test("uses the configured default logger level for ordinary log calls", () => {
   const records = [];

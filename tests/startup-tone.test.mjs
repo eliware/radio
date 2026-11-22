@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { sendStartupTone } from "../src/startup-tone.mjs";
+import sendStartupTone from "../src/startup-tone.mjs";
 
 test("uses the standard timer when no wait helper is supplied", async () => {
   jest.useFakeTimers();

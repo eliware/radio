@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { registerHandlers, registerSignals } from "@eliware/common";
 import { logger } from "../src/logger.mjs";
-import { createRadioRuntime } from "../src/radio/runtime.mjs";
-import { registerRadioShutdown } from "../src/radio-shutdown.mjs";
-import { readStatusPort, startStatusListener } from "../src/status/listener.mjs";
+import createRadioRuntime from "../src/radio/runtime.mjs";
+import registerRadioShutdown from "../src/radio-shutdown.mjs";
+import startStatusListener from "../src/status/listener.mjs";
+import readStatusPort from "../src/status/read-port.mjs";
 
 let runtime;
 let server;
