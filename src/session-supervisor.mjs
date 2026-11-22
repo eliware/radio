@@ -43,12 +43,15 @@ export default function createSessionSupervisor(
           channel.tonePlayed = true;
           channel.resolveTone();
         }
-        await channel.session.waitForClose();
-        channel.status = "disconnected";
-        log.warn("Zello channel disconnected", { channel: channel.name });
+        const disconnectError = await channel.session.waitForClose();
+        channel.status = "degraded";
+        log.warn("Zello channel disconnected", {
+          channel: channel.name,
+          ...(disconnectError && { error: disconnectError.message }),
+        });
         if (Date.now() - connectedAt >= 30000) delay = 1000;
       } catch (error) {
-        channel.status = "offline";
+        channel.status = "degraded";
         onError(new Error(`Zello channel ${channel.name}: ${error.message}`, { cause: error }));
       }
       const retryDelay = delay;
@@ -82,7 +85,7 @@ export default function createSessionSupervisor(
         channels.map(({ name, session, status }) => [
           name,
           {
-            state: session.healthy() ? "online" : status,
+            state: stopped ? "disconnected" : session.healthy() ? "online" : status,
           },
         ]),
       ),

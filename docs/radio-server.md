@@ -144,7 +144,10 @@ listener for each configured `UDP_PORT`.
 The app starts Zello sessions, optional Broadcastify encoders, and RTLSDR-Airband independently.
 It waits for every configured USB serial to appear. If a dongle is missing, it checks again every two
 seconds. Airband retries increase from one to 30 seconds after failure.
-Zello reconnect intervals can last five minutes and return to the first interval after stable connections.
+
+Zello sessions close and reconnect after three invalid command replies in ten seconds. Retry
+delays increase to five minutes and return to one second after a stable connection. A recovering
+channel reports `degraded`. The `/ready` route returns HTTP 503 until every channel recovers.
 Broadcastify processes retry failures with intervals capped at five minutes.
 
 Airband groups channels by `SDR_SERIAL` and sets each dongle's center frequency between its lowest
@@ -229,15 +232,15 @@ mapping and health-check URL in `compose.yaml`.
 
 ## Troubleshooting
 
-| Symptom                              | Checks                                                                                                                       |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                         |
-| Receiver waits for SDR devices       | Confirm each configured dongle is connected and its serial matches `SDR_SERIAL`. Check USB access on the Linux host.         |
-| A Zello channel stays offline        | Check the channel name, username, password, issuer, private key, and container network access.                               |
-| A Broadcastify stream stays offline  | Check its settings and FFmpeg logs. A `running` state does not prove the remote source is receiving audio.                   |
-| A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and UDP port. Confirm Airband logs show output to that port.            |
-| Voice sounds too filtered            | Lower `RNNOISE` to keep more unprocessed signal, then start the container again.                                             |
-| Config validation fails              | Check required keys, numeric ranges, unique UDP ports, shared dongle settings, and PEM formatting. Remove any `TOKEN` entry. |
+| Symptom                              | Checks                                                                                                                              |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                                |
+| Receiver waits for SDR devices       | Confirm each configured dongle is connected and its serial matches `SDR_SERIAL`. Check USB access on the Linux host.                |
+| A Zello channel stays offline        | Check the channel name, username, password, issuer, private key, and container network access. Read the channel error in `/health`. |
+| A Broadcastify stream stays offline  | Check its settings and FFmpeg logs. A `running` state does not prove the remote source is receiving audio.                          |
+| A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and UDP port. Confirm Airband logs show output to that port.                   |
+| Voice sounds too filtered            | Lower `RNNOISE` to keep more unprocessed signal, then start the container again.                                                    |
+| Config validation fails              | Check required keys, numeric ranges, unique UDP ports, shared dongle settings, and PEM formatting. Remove any `TOKEN` entry.        |
 
 Brief `[R82XX] PLL not locked!` output can appear while an SDR tuner starts. Look for later device
 initialization messages. If a device does not initialize, `/ready` stays unsuccessful until the

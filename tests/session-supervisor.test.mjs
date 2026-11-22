@@ -118,6 +118,32 @@ test("reconnects with exponential backoff after connection failures", async () =
   await supervisor.close();
 });
 
+test("reports degraded state and retries after a repeated invalid response disconnect", async () => {
+  const item = channel("PD");
+  const logs = [];
+  let releaseRetry;
+  item.session.waitForClose = async () => {
+    item.session.online = false;
+    return new Error("Received 3 invalid Zello responses in 10 seconds");
+  };
+  const log = { ...quietLog, warn: (message, details) => logs.push({ message, details }) };
+  const supervisor = createSessionSupervisor([item], {
+    wait: () => new Promise((resolve) => (releaseRetry = resolve)),
+    onError: () => {},
+    log,
+    playTone: async () => {},
+  });
+  await supervisor.initialReady;
+  for (let attempt = 0; attempt < 20 && !releaseRetry; attempt += 1) await Promise.resolve();
+  expect(supervisor.status().PD.state).toBe("degraded");
+  expect(logs[0].details.error).toMatch(/3 invalid Zello responses/);
+  releaseRetry();
+  for (let attempt = 0; attempt < 20 && item.session.connected < 2; attempt += 1)
+    await Promise.resolve();
+  expect(item.session.connected).toBe(2);
+  await supervisor.close();
+});
+
 test("supports an empty supervisor with the shared logger defaults", async () => {
   const supervisor = createSessionSupervisor([], { wait: async () => {}, onError: () => {} });
   await supervisor.initialReady;

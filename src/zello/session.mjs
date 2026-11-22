@@ -9,6 +9,7 @@ export default function createZelloSession(config, WebSocketImpl = WebSocket) {
   const lifecycle = createZelloLifecycle(WebSocketImpl);
   let commands;
   const streams = createZelloStreams(config.CHANNEL);
+  let disconnectError;
   const sendAudio = createZelloAudioSender({
     getSocket: lifecycle.getSocket,
     isOnline: lifecycle.healthy,
@@ -19,7 +20,16 @@ export default function createZelloSession(config, WebSocketImpl = WebSocket) {
     let currentCommands;
     const current = lifecycle.connect((error) => currentCommands?.close(error));
     const currentSocket = current.socket;
-    currentCommands = createZelloCommands(currentSocket, lifecycle.healthy, current.isCurrent);
+    currentCommands = createZelloCommands(
+      currentSocket,
+      lifecycle.healthy,
+      current.isCurrent,
+      (error) => {
+        disconnectError = error;
+        currentCommands.close(error);
+        current.close();
+      },
+    );
     commands = currentCommands;
     streams.setRequest(currentCommands.request);
     await current.opening;
@@ -55,6 +65,11 @@ export default function createZelloSession(config, WebSocketImpl = WebSocket) {
     sendAudio,
     startStream: streams.startStream,
     stopStream: streams.stopStream,
-    waitForClose: lifecycle.waitForClose,
+    waitForClose: async () => {
+      await lifecycle.waitForClose();
+      const error = disconnectError;
+      disconnectError = undefined;
+      return error;
+    },
   };
 }

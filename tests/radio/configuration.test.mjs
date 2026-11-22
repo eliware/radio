@@ -55,6 +55,34 @@ test("prepares valid configuration, including channels that share one dongle", a
     expect.stringContaining("fft_size"),
     { mode: 0o600 },
   );
+  prepared.reportError(new Error("component failed"));
+  expect(settings.log.error).toHaveBeenCalledWith(
+    "Radio component failure",
+    expect.objectContaining({ error: expect.any(Object) }),
+  );
+  prepared.releaseSecrets();
+});
+
+test("rate-limits repeated component errors and reports a suppression summary", async () => {
+  const settings = defaults([config("851", "PD", "15581")]);
+  const onError = jest.fn();
+  const prepared = await prepareRadioConfiguration({ ...settings, onError });
+  const error = new Error("Invalid Zello response");
+  prepared.reportError(error);
+  prepared.reportError(error);
+  expect(onError).toHaveBeenCalledTimes(1);
+  jest.useFakeTimers();
+  jest.advanceTimersByTime(60000);
+  prepared.reportError(error);
+  expect(onError).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      message: "Repeated error suppressed 1 times: Invalid Zello response",
+    }),
+  );
+  prepared.reportError("plain error");
+  for (let index = 0; index < 101; index += 1)
+    prepared.reportError(new Error(`unique error ${index}`));
+  jest.useRealTimers();
   prepared.releaseSecrets();
 });
 

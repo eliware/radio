@@ -23,8 +23,26 @@ export default async function prepareRadioConfiguration({
   let reportError;
   try {
     rnnoise = await loadNoise();
-    reportError =
-      onError ?? ((error) => log.error("Radio component failure", { error: errorDetails(error) }));
+    const recentErrors = new Map();
+    reportError = (error) => {
+      const message = error?.message ?? String(error);
+      const now = Date.now();
+      const previous = recentErrors.get(message);
+      if (previous && now - previous.time < 60000) {
+        previous.suppressed += 1;
+        return;
+      }
+      const reportedError =
+        previous?.suppressed > 0
+          ? new Error(`Repeated error suppressed ${previous.suppressed} times: ${message}`, {
+              cause: error,
+            })
+          : error;
+      recentErrors.set(message, { time: now, suppressed: 0 });
+      if (recentErrors.size > 100) recentErrors.delete(recentErrors.keys().next().value);
+      if (onError) onError(reportedError);
+      else log.error("Radio component failure", { error: errorDetails(reportedError) });
+    };
     await writeConfig(airbandPath, createAirbandConfig(configs), { mode: 0o600 });
     await chmodConfig(airbandPath, 0o600);
   } catch (error) {
