@@ -22,46 +22,54 @@ NBFM receiver audio bridge to Zello channels
 
 ## Features
 
-Radio forwards local NBFM channels to matching Zello channels. It can also send processed audio to Broadcastify Classic.
+Radio forwards local NBFM receiver audio to matching Zello channels. It can also send processed
+audio to optional Broadcastify Classic feeds.
 
 ## Requirements
 
-Run the app on a Linux host with Docker Compose and an RTL-SDR dongle. Provide production Zello credentials.
-Use Node.js 26 or later and npm for development.
+Run the container on a Linux host with Docker Engine, the Docker Compose plugin, and an RTL-SDR
+device. Provide production Zello credentials for each destination channel.
 
 ## Setup
 
-Copy `.env.example` to `.env` and set its mode to `600`. Fill in the channel values.
-See [the setup guide](docs/radio-server.md) to add channels.
+Copy `.env.example` to `.env`. Set its file mode to `600`. Follow the
+[installation guide](docs/radio-server.md#setup).
 
 ## Usage
 
-Read [release notes](RELEASE_NOTES.md) for changes. Find user instructions in [the guide](docs/README.md).
-Read [specifications](specs/README.md) for repository contracts.
+Read the [end-user guide](docs/README.md) and its [radio bridge manual](docs/radio-server.md).
+Read [release notes](RELEASE_NOTES.md) for version changes. Read [specifications](specs/README.md)
+for repository contracts.
 
 ## Development
 
-Install dependencies with `npm ci`. Follow [contributor instructions](AGENTS.md).
+Use Node.js 26 or later. Read the [contributor instructions](AGENTS.md) for development setup and
+validation commands. Follow the [direct startup guide](docs/radio-server.md#operations) to run the
+application outside Compose.
 
 ## Testing
 
-Run `npm test` for repository validation.
+Run `npm test` to validate the repository. Read [AGENTS.md](AGENTS.md) for focused test commands.
 
 ## Troubleshooting
 
-See [troubleshooting guidance](docs/radio-server.md#troubleshooting). Check `/health` and `/ready` for application status.
+Follow the [troubleshooting guide](docs/radio-server.md#troubleshooting). Check `/health` for
+component state and `/ready` for overall readiness.
 
 ## Security
 
-Keep channel files private. They contain account passwords and signing keys.
+Keep channel files private because they contain account passwords and signing keys. Do not commit
+credentials or share configuration files.
 
 ## Configuration
 
-See [channel settings](docs/radio-server.md#channel-settings) for each channel value.
+Read the [channel settings reference](docs/radio-server.md#channel-settings) for required values,
+defaults, and accepted ranges.
 
 ## Operations
 
-Use `npm run deploy:compose` to build and start the local container. See [container operations](docs/radio-server.md#operations) for other commands.
+Run `npm run deploy:compose` to build and start the local container. Follow the
+[container operations guide](docs/radio-server.md#operations) to inspect, start, or stop it.
 
 ## Support
 

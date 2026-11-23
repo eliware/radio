@@ -2,7 +2,7 @@
 
 Radio forwards one or more local NBFM receiver channels to separate Zello channels. One Docker
 container runs the Node.js supervisor, RTLSDR-Airband, audio processing, and all Zello connections.
-The image uses CentOS Stream 10 with Node.js 26.13.1 from the Eliware CentOS 10 Node.js base image.
+The image uses CentOS Stream 10 with Node.js 26 from the Eliware CentOS 10 Node.js base image.
 
 ## What it does
 
@@ -81,11 +81,13 @@ curl http://127.0.0.1:1400/ready
 The first build compiles RTLSDR-Airband and installs the Node.js dependencies. Startup needs a
 short interval while USB devices are detected and Zello connections are made. Each one-second tone
 plays after its Zello session connects.
+If a channel file is missing or invalid, startup exits before it opens connections. Fix the file,
+then start the container again.
 
 ## Channel settings
 
-Each channel file is a Node.js dotenv-style file. Keep PEM keys inside quoted multiline values.
-The table lists the app's validation rules.
+Each channel file uses Node.js environment-file syntax. Keep PEM keys inside quoted multiline
+values. Copy `.env.example` to see placeholders for required values. The table lists validation rules.
 
 | Key                     | Required   | Meaning and accepted values                                      |
 | ----------------------- | ---------- | ---------------------------------------------------------------- |
@@ -94,7 +96,7 @@ The table lists the app's validation rules.
 | `PASSWORD`              | Yes        | Password for the Zello account.                                  |
 | `ISSUER`                | Yes        | Issuer value for the production signing key.                     |
 | `PRIVATE_KEY`           | Yes        | PEM private key used to sign a production JWT.                   |
-| `SDR_SERIAL`            | Yes        | RTL-SDR serial number. Shared channels span at most 2.4 MHz.     |
+| `SDR_SERIAL`            | Yes        | RTL-SDR serial with letters, digits, underscores, or hyphens.    |
 | `SDR_GAIN`              | No         | Tuner amplification from 0 to 49.6 dB. Default: 10.              |
 | `FREQUENCY_MHZ`         | Yes        | Receive frequency from 24 through 1766 MHz.                      |
 | `CTCSS_HZ`              | Yes        | CTCSS tone from 67 through 254.1 Hz.                             |
@@ -123,17 +125,23 @@ values.
 
 Do not set `TOKEN`. The app rejects it and signs production JWTs from `ISSUER` and `PRIVATE_KEY`.
 The `PUBLIC_KEY` entry in the template is for reference and is not needed at runtime.
+The app rejects channel settings that are not listed in the table.
 
 ## Runtime settings
 
 These environment variables configure the application process or its HTTP status endpoint. They
 are separate from the per-channel settings above.
 
-| Variable             | Required | Meaning and default                                                       |
-| -------------------- | -------- | ------------------------------------------------------------------------- |
-| `RADIO_CONFIG_FILES` | No       | Non-empty JSON array of channel file paths. Defaults to the app's `.env`. |
-| `RADIO_HEALTH_PORT`  | No       | HTTP status port. Defaults to `1400`.                                     |
-| `LOG_LEVEL`          | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.   |
+| Variable             | Required | Meaning and default                                                                  |
+| -------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `RADIO_CONFIG_FILES` | No       | Non-empty JSON array of channel paths. Defaults to the application root `.env` file. |
+| `RADIO_HEALTH_PORT`  | No       | HTTP status port. Defaults to `1400`. Accepts integers from `0` through `65535`.     |
+| `LOG_LEVEL`          | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.              |
+
+A value of `0` lets the operating system select a port. The Compose health check expects port
+`1400`, so keep the default when you use Compose. `RADIO_CONFIG_FILES` must contain one or more
+non-empty file paths. For example, use `["/run/radio/channel.env", "/run/radio/channel2.env"]`.
+The container default is `/app/.env`.
 
 ## Startup and recovery
 
@@ -145,10 +153,15 @@ The app starts Zello sessions, optional Broadcastify encoders, and RTLSDR-Airban
 It waits for every configured USB serial to appear. If a dongle is missing, it checks again every two
 seconds. Airband retries increase from one to 30 seconds after failure.
 
-Zello sessions close and reconnect after three invalid command replies in ten seconds. Retry
-delays increase to five minutes and return to one second after a stable connection. A recovering
-channel reports `degraded`. The `/ready` route returns HTTP 503 until every channel recovers.
-Broadcastify processes retry failures with intervals capped at five minutes.
+Zello sessions close and reconnect after three invalid matching command replies in ten seconds. A
+valid response resets this count. Retry delays double from one second to five minutes. They return to
+one second after a connection stays healthy for 30 seconds. A recovering channel reports `degraded`.
+The `/ready` route returns HTTP 503 until every channel recovers.
+
+Broadcastify retries start at one second and double to five minutes. A stable process resets the
+retry interval after 60 seconds. A failed Broadcastify process does not stop Zello audio or the other
+channel output. The app suppresses repeated matching component errors for 60 seconds. Later error
+reports include the suppression count and error details.
 
 Airband groups channels by `SDR_SERIAL` and sets each dongle's center frequency between its lowest
 and highest channel frequencies. It samples each dongle at 2.56 MHz, which allows a 2.4 MHz span.
@@ -167,10 +180,14 @@ The two HTTP routes return JSON:
 - Requests using methods other than `GET` to `/health` or `/ready` return HTTP 405.
 - Other paths return HTTP 404.
 
-Both status responses are JSON and include the receiver state and each channel's connection state.
-The response includes Broadcastify state for each channel. Disabled outputs report `disabled`.
-Readiness checks the FFmpeg process. It does not confirm that a remote Broadcastify server is
-receiving audio.
+Both status responses are JSON. They include receiver, channel, and Broadcastify states. Disabled
+outputs report `disabled`. Receiver errors can appear in the status response. Check logs for Zello
+or Broadcastify errors.
+
+Readiness checks the FFmpeg process and its writable audio input. It does not confirm that a remote
+Broadcastify server receives audio.
+
+The `/health` route confirms that the status listener responds. It does not report radio readiness.
 For example, a startup response can look like this:
 
 ```json
@@ -188,9 +205,10 @@ For example, a startup response can look like this:
 }
 ```
 
-The channel names are taken from each `CHANNEL` value. Error details may also appear in component
-status. Docker's health check uses `/ready`, checks every 15 seconds, and allows a 30-second startup
-period before counting failures.
+The channel names come from each `CHANNEL` value. The status listener binds to all container
+interfaces. Compose publishes it on host loopback only. Docker checks `/ready` every 15 seconds and
+allows a 30-second startup period before counting failures. After three failed checks, Docker marks
+the container unhealthy. The health check does not start the container again by itself.
 
 ## Operations
 
@@ -200,16 +218,25 @@ Run the package script to build the image and start or update the local containe
 npm run deploy:compose
 ```
 
-Use these commands to inspect the container, start it again, or stop it:
+To run outside Compose, install Node.js 26 or later and run `npm ci`. Provide the required channel
+settings in `.env` or set `RADIO_CONFIG_FILES`. Install RTLSDR-Airband 5.1.0 and its shared runtime
+libraries. Give the process access to the USB devices.
+
+If you enable Broadcastify, install FFmpeg. Then run `npm start`. The status listener binds to all host
+interfaces on the configured port. Use a firewall to limit access. Compose publishes the status port
+on host loopback only.
+
+Use these commands to inspect the container, start it again, follow its logs, or stop it:
 
 ```sh
 docker compose ps              # Show container and health state.
 docker compose logs -f radio   # Follow app and RTLSDR-Airband logs.
 docker compose restart radio   # Restart after editing channel configuration files.
+docker compose stop radio      # Stop the service without removing the container.
 docker compose down            # Stop and remove the container.
 ```
 
-Channel files are mounted at container startup. Starting the container again applies their changes.
+Channel files are mounted at container startup. Start the container again after changing a channel file.
 A new image build is not needed. After changing `compose.yaml`, use `docker compose up -d` so Compose
 recreates the container with the updated settings. Use `docker compose up -d --build` after source
 or image changes.
@@ -219,28 +246,27 @@ change it, edit `LOG_LEVEL` in `compose.yaml` and run `docker compose up -d`. A 
 does not apply changed Compose environment values. Logs use timestamped JSON for Node.js messages.
 RTLSDR-Airband writes its own text messages to the same container log.
 
-Set `RADIO_CONFIG_FILES` to a JSON array of channel config paths. If unset, the app reads `.env` beside
-its runtime module. Each channel needs a unique UDP port.
-
 Channels sharing an SDR serial must set `SDR_GAIN` identically. Their frequencies can span at most
 2.4 MHz. The app centers the dongle between their lowest and highest frequencies.
-`RADIO_HEALTH_PORT` is optional and defaults to `1400`.
 
-The status listener binds to all container interfaces.
-Compose publishes it on host loopback only. If changing the port, also update the published host
-mapping and health-check URL in `compose.yaml`.
+The status listener binds to all interfaces. Compose limits host access to loopback. If you change
+the port, update the published host mapping and health-check URL in `compose.yaml`.
+
+The app handles `SIGINT` and `SIGTERM`. It closes audio inputs, Zello sessions, optional Broadcastify
+outputs, RTLSDR-Airband, and the status server. Use `docker compose stop` or `docker compose down` to
+send a stop signal through Compose.
 
 ## Troubleshooting
 
-| Symptom                              | Checks                                                                                                                              |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                                |
-| Receiver waits for SDR devices       | Confirm each configured dongle is connected and its serial matches `SDR_SERIAL`. Check USB access on the Linux host.                |
-| A Zello channel stays offline        | Check the channel name, username, password, issuer, private key, and container network access. Read the channel error in `/health`. |
-| A Broadcastify stream stays offline  | Check its settings and FFmpeg logs. A `running` state does not prove the remote source is receiving audio.                          |
-| A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and UDP port. Confirm Airband logs show output to that port.                   |
-| Voice sounds too filtered            | Lower `RNNOISE` to keep more unprocessed signal, then start the container again.                                                    |
-| Config validation fails              | Check required keys, numeric ranges, unique UDP ports, shared dongle settings, and PEM formatting. Remove any `TOKEN` entry.        |
+| Symptom                              | Checks                                                                                                                       |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `/ready` reports unavailable         | Read `docker compose logs --tail=100 radio`. Check receiver and channel states in the JSON response.                         |
+| Receiver waits for SDR devices       | Confirm each configured dongle is connected and its serial matches `SDR_SERIAL`. Check USB access on the Linux host.         |
+| A Zello channel stays offline        | Check its channel settings and network access. Read Zello errors in `docker compose logs radio`.                             |
+| A Broadcastify stream stays offline  | Check its settings and FFmpeg logs. A `running` state does not prove the remote source is receiving audio.                   |
+| A channel is online but has no audio | Check frequency, antenna, CTCSS tone, dongle serial, and UDP port. Confirm Airband logs show output to that port.            |
+| Voice sounds too filtered            | Lower `RNNOISE` to keep more unprocessed signal, then start the container again.                                             |
+| Config validation fails              | Check required keys, numeric ranges, unique UDP ports, shared dongle settings, and PEM formatting. Remove any `TOKEN` entry. |
 
 Brief `[R82XX] PLL not locked!` output can appear while an SDR tuner starts. Look for later device
 initialization messages. If a device does not initialize, `/ready` stays unsuccessful until the

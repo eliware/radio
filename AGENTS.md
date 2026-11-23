@@ -6,22 +6,26 @@ Eliware maintains the NBFM receiver audio bridge to Zello channels.
 
 ## Scope and boundaries
 
-Keep this repository focused on local NFM reception and private Zello channel feeds.
+Keep this repository focused on local NFM reception, private Zello feeds, and optional Broadcastify Classic outputs.
 
 ## Layout
 
-Keep implementation in `src/`, launchers in `bin/`, tests in `tests/`, fixtures in
-`test-fixtures/`, documentation in `docs/`, and specifications in `specs/`. Mirror each source
-`.mjs` file with one same-path `.test.mjs` file under `tests/`.
+Keep runtime modules in `src/` and launchers in `bin/`.
+Keep tests in `tests/`, fixtures in `test-fixtures/`, docs in `docs/`, and specs in `specs/`.
+Put maintained examples in `examples/`.
+Mirror each source `.mjs` file with one same-path `.test.mjs` file in `tests/`.
 
 ## Development
 
-Use Node.js 26 or later, npm, and native ESM.
+Use Node.js 26 or later with npm and native ESM.
+Run `npm ci` before local development.
 
 ## Validation
 
-Run `npm test` for aggregate validation.
-Run `npm run lint`, `npm run audit`, `npm run format`, and `npm run format:check` for focused checks.
+Run `npm run lint` to check code quality.
+Run `npm run audit` to check dependencies.
+Run `npm run format` to apply formatting.
+Run `npm run format:check` to check formatting.
 
 ## Security
 
