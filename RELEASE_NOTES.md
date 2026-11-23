@@ -1,5 +1,11 @@
 # Release Notes
 
+## 15.2.1 — 2026-11-23
+
+### Fixed
+
+- Restores the 16-bit PCM sample scale that the RNNoise API expects.
+
 ## 15.2.0 — 2026-11-23
 
 ### Added

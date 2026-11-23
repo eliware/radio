@@ -7,6 +7,7 @@ export default function createDenoiserFrameProcessor({
   const frameBytes = frameSize * 2;
 
   return (buffered) => {
+    // RNNoise expects raw 16-bit PCM values in this Float32Array.
     const original = Float32Array.from({ length: frameSize }, (_, i) =>
       buffered.readInt16LE(i * 2),
     );
