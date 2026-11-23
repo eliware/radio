@@ -1,3 +1,5 @@
+import recoverDenoiserState from "./recovery.mjs";
+
 export default function createDenoiserState({ rnnoise, onError }) {
   let state = rnnoise.createDenoiseState();
 
@@ -6,19 +8,7 @@ export default function createDenoiserState({ rnnoise, onError }) {
       state.processFrame(frame);
     },
     recover(error) {
-      let resetError;
-      try {
-        state.destroy();
-      } catch (cause) {
-        resetError = cause;
-      }
-      try {
-        state = rnnoise.createDenoiseState();
-      } catch (cause) {
-        resetError ??= cause;
-      }
-      if (resetError) onError(resetError);
-      onError(error);
+      recoverDenoiserState(state, (next) => (state = next), rnnoise, onError, error);
     },
     close() {
       try {

@@ -1,4 +1,5 @@
 import listenForZelloResponses from "./responses.mjs";
+import createZelloPendingRequests from "./pending-requests.mjs";
 
 export default function createZelloCommands(
   socket,
@@ -6,16 +7,8 @@ export default function createZelloCommands(
   isActive = () => true,
   onRepeatedInvalid,
 ) {
-  let sequence = 0;
-  const waiting = new Map();
-
-  function failAll(error) {
-    for (const { reject, timer } of waiting.values()) {
-      clearTimeout(timer);
-      reject(error);
-    }
-    waiting.clear();
-  }
+  const pendingRequests = createZelloPendingRequests();
+  const { waiting } = pendingRequests;
 
   const removeResponseListener = listenForZelloResponses(
     socket,
@@ -26,10 +19,10 @@ export default function createZelloCommands(
 
   function request(command, allowOffline = false) {
     if (!allowOffline && !isOnline()) return Promise.reject(new Error("Zello is offline"));
-    const seq = ++sequence;
+    const seq = pendingRequests.nextSequence();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        waiting.delete(seq);
+        pendingRequests.remove(seq);
         reject(new Error(`Zello ${command.command} timed out`));
       }, 10000);
       waiting.set(seq, { resolve, reject, timer });
@@ -37,7 +30,7 @@ export default function createZelloCommands(
         socket.send(JSON.stringify({ ...command, seq }));
       } catch (error) {
         clearTimeout(timer);
-        waiting.delete(seq);
+        pendingRequests.remove(seq);
         reject(error);
       }
     });
@@ -46,7 +39,7 @@ export default function createZelloCommands(
   return {
     close(error) {
       removeResponseListener();
-      failAll(error);
+      pendingRequests.failAll(error);
     },
     request,
   };

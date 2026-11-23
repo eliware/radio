@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import startBroadcastifyProcess from "./start.mjs";
-import createBroadcastifyRetry from "./retry.mjs";
-import createBroadcastifyStability from "./stability.mjs";
+import createBroadcastifyRestartPolicy from "./restart-policy.mjs";
 import monitorBroadcastifyProcess from "./process.mjs";
 import shutdownBroadcastifyProcess from "./shutdown.mjs";
 
@@ -17,17 +16,12 @@ export default function createBroadcastifySupervisor(
   let child, closing;
   let state = settings.enabled ? "connecting" : "disabled";
   let closed = false;
-  const retry = createBroadcastifyRetry({ setTimeoutImpl, clearTimeoutImpl });
-  const stability = createBroadcastifyStability({
-    onStable: () => retry.reset(),
-    setTimeoutImpl,
-    clearTimeoutImpl,
-  });
+  const restartPolicy = createBroadcastifyRestartPolicy({ setTimeoutImpl, clearTimeoutImpl });
 
   function scheduleRestart() {
     if (closed) return;
     state = "retrying";
-    retry.schedule(start);
+    restartPolicy.schedule(start);
   }
 
   function start() {
@@ -44,10 +38,10 @@ export default function createBroadcastifySupervisor(
         onProcessError: () => (state = "retrying"),
         onSpawn: () => {
           state = "running";
-          stability.observe(60000);
+          restartPolicy.observe(60000);
         },
         onClose: () => {
-          stability.cancel();
+          restartPolicy.cancelStability();
           child = undefined;
           if (!closed) scheduleRestart();
         },
@@ -69,8 +63,7 @@ export default function createBroadcastifySupervisor(
     close: () => {
       if (closing) return closing;
       closed = true;
-      retry.close();
-      stability.close();
+      restartPolicy.close();
       state = "closed";
       const process = child;
       if (!process) return Promise.resolve();

@@ -1,5 +1,6 @@
 import { logger as defaultLogger } from "./logger.mjs";
 import sendStartupTone from "./startup-tone.mjs";
+import maintainSessionChannel from "./session/channel.mjs";
 
 export default function createSessionSupervisor(
   channels,
@@ -28,39 +29,16 @@ export default function createSessionSupervisor(
     () => {},
   );
 
-  async function maintain(channel) {
-    let delay = 1000;
-    while (!stopped) {
-      try {
-        channel.status = "connecting";
-        log.debug("Connecting to Zello channel", { channel: channel.name, retryDelayMs: delay });
-        await channel.session.connect();
-        channel.status = "online";
-        log.info("Connected to Zello channel", { channel: channel.name });
-        const connectedAt = Date.now();
-        if (!channel.tonePlayed) {
-          await playTone(channel.session, Number(channel.config.TONE), wait);
-          channel.tonePlayed = true;
-          channel.resolveTone();
-        }
-        const disconnectError = await channel.session.waitForClose();
-        channel.status = "degraded";
-        log.warn("Zello channel disconnected", {
-          channel: channel.name,
-          ...(disconnectError && { error: disconnectError.message }),
-        });
-        if (Date.now() - connectedAt >= 30000) delay = 1000;
-      } catch (error) {
-        channel.status = "degraded";
-        onError(new Error(`Zello channel ${channel.name}: ${error.message}`, { cause: error }));
-      }
-      const retryDelay = delay;
-      delay = Math.min(delay * 2, 300000);
-      if (!stopped) await pause(retryDelay);
-    }
-  }
-
-  const tasks = channels.map(maintain);
+  const tasks = channels.map((channel) =>
+    maintainSessionChannel(channel, {
+      isStopped: () => stopped,
+      pause,
+      log,
+      onError,
+      playTone,
+      wait,
+    }),
+  );
   return {
     initialReady,
     tasks,
