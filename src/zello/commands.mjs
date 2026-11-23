@@ -6,6 +6,7 @@ export default function createZelloCommands(
   isOnline,
   isActive = () => true,
   onRepeatedInvalid,
+  diagnoseResponseValues = process.env.RADIO_ZELLO_DEBUG_RESPONSES === "true",
 ) {
   const pendingRequests = createZelloPendingRequests();
   const { waiting } = pendingRequests;
@@ -15,6 +16,7 @@ export default function createZelloCommands(
     isActive,
     waiting,
     onRepeatedInvalid,
+    diagnoseResponseValues,
   );
 
   function request(command, allowOffline = false) {
@@ -25,7 +27,7 @@ export default function createZelloCommands(
         pendingRequests.remove(seq);
         reject(new Error(`Zello ${command.command} timed out`));
       }, 10000);
-      waiting.set(seq, { resolve, reject, timer });
+      waiting.set(seq, { resolve, reject, timer, command: command.command });
       try {
         socket.send(JSON.stringify({ ...command, seq }));
       } catch (error) {

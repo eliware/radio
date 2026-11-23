@@ -1,5 +1,12 @@
 # Release Notes
 
+## 15.2.2 — 2026-11-23
+
+### Changed
+
+- Adds command names and response field types to repeated invalid Zello response logs.
+- Adds optional sanitized response values when `RADIO_ZELLO_DEBUG_RESPONSES` is `true`.
+
 ## 15.2.1 — 2026-11-23
 
 ### Fixed

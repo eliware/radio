@@ -76,15 +76,71 @@ test("reports three invalid matching responses within ten seconds", () => {
   const invalid = jest.fn();
   const waiting = new Map();
   for (let seq = 1; seq <= 3; seq += 1)
-    waiting.set(seq, { resolve: jest.fn(), reject: jest.fn(), timer: undefined });
+    waiting.set(seq, {
+      resolve: jest.fn(),
+      reject: jest.fn(),
+      timer: undefined,
+      command: "start_stream",
+    });
   const remove = listenForZelloResponses(socket, () => true, waiting, invalid);
   for (let seq = 1; seq <= 3; seq += 1)
     socket.emit("message", Buffer.from(JSON.stringify({ seq, success: "yes" })));
   expect(invalid).toHaveBeenCalledTimes(1);
-  expect(invalid).toHaveBeenCalledWith(
-    new Error("Received 3 invalid Zello responses in 10 seconds"),
+  expect(invalid.mock.calls[0][0].message).toContain(
+    "Received 3 invalid Zello responses in 10 seconds",
   );
+  expect(invalid.mock.calls[0][0].message).toContain('"command":"start_stream"');
+  expect(invalid.mock.calls[0][0].message).toContain('"success":"string"');
   remove();
+});
+
+test("reports response field types without logging response values", () => {
+  const socket = new EventEmitter();
+  const invalid = jest.fn();
+  const waiting = new Map();
+  for (let seq = 1; seq <= 3; seq += 1)
+    waiting.set(seq, { resolve: jest.fn(), reject: jest.fn(), timer: undefined, command: "logon" });
+  listenForZelloResponses(socket, () => true, waiting, invalid);
+  for (let seq = 1; seq <= 3; seq += 1) {
+    socket.emit(
+      "message",
+      Buffer.from(
+        JSON.stringify({
+          seq,
+          success: "secret-value",
+          password: "private",
+          optional: null,
+          items: [],
+        }),
+      ),
+    );
+  }
+  const message = invalid.mock.calls[0][0].message;
+  expect(message).toContain('"password":"string"');
+  expect(message).toContain('"success":"string"');
+  expect(message).toContain('"optional":"null"');
+  expect(message).toContain('"items":"array"');
+  expect(message).not.toContain("secret-value");
+  expect(message).not.toContain("private");
+});
+
+test("includes sanitized response values when diagnostics are enabled", () => {
+  const socket = new EventEmitter();
+  const invalid = jest.fn();
+  const waiting = new Map();
+  for (let seq = 1; seq <= 3; seq += 1)
+    waiting.set(seq, { resolve: jest.fn(), reject: jest.fn(), timer: undefined, command: "logon" });
+  listenForZelloResponses(socket, () => true, waiting, invalid, true);
+  for (let seq = 1; seq <= 3; seq += 1) {
+    socket.emit(
+      "message",
+      Buffer.from(JSON.stringify({ seq, success: "unexpected", password: "private" })),
+    );
+  }
+  const message = invalid.mock.calls[0][0].message;
+  expect(message).toContain('"success":"unexpected"');
+  expect(message).not.toContain('"password":"private"');
+  expect(message).not.toContain("private");
 });
 
 test("closes a Zello session after repeated invalid command responses", async () => {

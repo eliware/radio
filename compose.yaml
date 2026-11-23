@@ -6,6 +6,7 @@ services:
     environment:
       RADIO_HEALTH_PORT: 1400
       RADIO_CONFIG_FILES: '["/run/radio/channel.env"]'
+      RADIO_ZELLO_DEBUG_RESPONSES: ${RADIO_ZELLO_DEBUG_RESPONSES:-false}
       LOG_LEVEL: info
     volumes:
       - ./.env:/run/radio/channel.env:ro
