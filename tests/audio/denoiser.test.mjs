@@ -12,8 +12,8 @@ test("buffers complete frames and mixes denoised PCM with original samples", () 
   const output = [];
   const denoiser = createAudioDenoiser({
     rnnoise: makeRnnoise((frame) => {
-      frame[0] = 2000 / 32768;
-      frame[1] = -2000 / 32768;
+      frame[0] = 2000;
+      frame[1] = -2000;
     }),
     rnnoiseMix: 0.5,
     onPcm: (pcm) => output.push(pcm),

@@ -1,15 +1,15 @@
 import { expect, jest, test } from "@jest/globals";
 import createDenoiserFrameProcessor from "../../../src/audio/denoiser/frame-processor.mjs";
 
-test("normalizes signed PCM for RNNoise and mixes denoised samples", () => {
+test("passes signed PCM to RNNoise, mixes denoised samples, and clamps output", () => {
   const seen = [];
   const outputs = [];
   const processFrame = createDenoiserFrameProcessor({
     frameSize: 2,
     processFrame: (frame) => {
       seen.push(...frame);
-      frame[0] = 0.75;
-      frame[1] = -0.75;
+      frame[0] = 40000;
+      frame[1] = -40000;
     },
     rnnoiseMix: 0.5,
     onPcm: (pcm) => outputs.push(pcm),
@@ -20,9 +20,9 @@ test("normalizes signed PCM for RNNoise and mixes denoised samples", () => {
 
   processFrame(input);
 
-  expect(seen).toEqual([10000 / 32768, -10000 / 32768]);
-  expect(outputs[0].readInt16LE(0)).toBe(17288);
-  expect(outputs[0].readInt16LE(2)).toBe(-17288);
+  expect(seen).toEqual([10000, -10000]);
+  expect(outputs[0].readInt16LE(0)).toBe(25000);
+  expect(outputs[0].readInt16LE(2)).toBe(-25000);
 });
 
 test("clamps mixed samples to signed 16 bit limits", () => {
@@ -30,8 +30,8 @@ test("clamps mixed samples to signed 16 bit limits", () => {
   createDenoiserFrameProcessor({
     frameSize: 2,
     processFrame: (frame) => {
-      frame[0] = 2;
-      frame[1] = -2;
+      frame[0] = 50000;
+      frame[1] = -50000;
     },
     rnnoiseMix: 1,
     onPcm: output,
