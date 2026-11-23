@@ -1,19 +1,26 @@
 # Release Notes
 
-## 15.2.0 — 2026-11-22
+## 15.2.0 — 2026-11-23
 
 ### Added
 
-- Adds the `deploy:compose` npm script to build and start the local container.
-- Runs the Compose deployment script after tests on the NAS deployment target.
+- Adds `npm run deploy:compose` to build and start the local Radio container.
+- Runs the Compose deployment command after tests on the NAS deployment target.
+- Reconnects Zello sessions after repeated invalid server responses.
 
 ### Changed
 
-- Documents the local Compose deployment command and container operations.
-- Builds the Radio container with the Eliware CentOS 10 Node.js 26 base image.
-- Aligns implementation modules with the `@eliware/test` 15.2.0 export conventions.
-- Updates resolved development dependencies with `npm update`. `npm outdated` found no outdated direct dependencies.
-- Sets the package version to 15.2.0.
+- Builds the Radio container with the Eliware CentOS 10 Node.js 26 base image and keeps its Dockerfile at the repository root.
+- Ignores environment files except `.env.example` files, which keeps channel credentials out of Git.
+- Updates `@eliware/test` to 15.2.0, refreshes resolved dependencies, and sets the package version to 15.2.0.
+- Expands the end-user guide and streamlines the README and contributor guidance.
+- Refactors Airband supervision, channel validation, audio transmission, Broadcastify process management, session maintenance, Zello request tracking, and denoiser recovery into focused modules.
+- Normalizes PCM samples before RNNoise processing and converts processed samples to signed 16-bit PCM.
+
+### Fixed
+
+- Ends an audio transmission after its idle timeout when stream startup completes after the timeout.
+- Removes duplicate radio input tests while retaining channel and input coverage.
 
 ## 15.1.0 — 2026-11-15
 
