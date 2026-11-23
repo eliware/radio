@@ -9,3 +9,9 @@ test("reads a channel file as UTF-8 and parses environment values", async () => 
   });
   expect(read).toHaveBeenCalledWith("police.env", "utf8");
 });
+
+test("reads the approved environment example file", async () => {
+  await expect(
+    readChannelConfigFile(new URL("../../.env.example", import.meta.url)),
+  ).resolves.toHaveProperty("CHANNEL", "replace-with-channel-name");
+});

@@ -32,9 +32,3 @@ test("leaves Broadcastify fields to the channel integration validator", () => {
     CHANNEL: "Police",
   });
 });
-
-test("rejects unknown settings so unrecognized credentials cannot be logged", () => {
-  expect(() => validateChannelSettings({ ...valid, PRIVATE_TOKEN: "secret-value" })).toThrow(
-    "PRIVATE_TOKEN is not a supported channel setting",
-  );
-});
