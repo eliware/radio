@@ -4,6 +4,7 @@ import createTransmissionIdle from "./transmission/idle.mjs";
 import createTransmissionBuffer from "./transmission/buffer.mjs";
 import createTransmissionStart from "./transmission/start.mjs";
 import createTransmissionSend from "./transmission/send.mjs";
+import createTransmissionEnd from "./transmission/end.mjs";
 export default function createAudioTransmission({
   session,
   rnnoise,
@@ -29,7 +30,10 @@ export default function createAudioTransmission({
     isClosed: () => closed,
     onAbandonedStopped: () => !closed && buffer.length && start.begin(),
   });
-  const idle = createTransmissionIdle({
+  let idle;
+  let completeTransmission;
+  const end = (force = false) => completeTransmission(force);
+  idle = createTransmissionIdle({
     idleMs,
     now,
     setTimeoutImpl,
@@ -66,18 +70,19 @@ export default function createAudioTransmission({
     setTimeoutImpl,
     clearTimeoutImpl,
   });
-  async function end(force = false) {
-    if ((closed && !force) || !idle.isIdle(force)) return;
-    if (start.isStarting) await start.wait();
-    if (!idle.isIdle(force)) return;
-    buffer.keepCompleteFrames();
-    sender.flush();
-    buffer.clear();
-    sender.finishTransmission();
-    const id = streamId;
-    streamId = undefined;
-    await recovery.stopOrAbandon(id);
-  }
+  completeTransmission = createTransmissionEnd({
+    isClosed: () => closed,
+    isIdle: (force) => idle.isIdle(force),
+    isStarting: () => start.isStarting,
+    waitForStart: start.wait,
+    buffer,
+    sender,
+    getStreamId: () => streamId,
+    setStreamId: (id) => {
+      streamId = id;
+    },
+    recovery,
+  });
   async function close() {
     if (closed) return;
     closed = true;

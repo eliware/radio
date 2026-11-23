@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import createFfmpegArgs from "./ffmpeg-args.mjs";
+import startBroadcastifyProcess from "./start.mjs";
 import createBroadcastifyRetry from "./retry.mjs";
 import createBroadcastifyStability from "./stability.mjs";
 import monitorBroadcastifyProcess from "./process.mjs";
@@ -34,9 +34,7 @@ export default function createBroadcastifySupervisor(
     if (closed || !settings.enabled) return;
     state = "connecting";
     try {
-      child = spawnProcess("ffmpeg", createFfmpegArgs(settings), {
-        stdio: ["pipe", "ignore", "pipe"],
-      });
+      child = startBroadcastifyProcess(settings, spawnProcess);
       const process = child;
       monitorBroadcastifyProcess(child, {
         settings,
