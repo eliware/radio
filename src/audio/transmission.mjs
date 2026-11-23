@@ -75,6 +75,7 @@ export default function createAudioTransmission({
     isIdle: (force) => idle.isIdle(force),
     isStarting: () => start.isStarting,
     waitForStart: start.wait,
+    rescheduleIdle: () => idle.schedule(),
     buffer,
     sender,
     getStreamId: () => streamId,

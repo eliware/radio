@@ -13,10 +13,13 @@ export default function createAudioIdleTimer({
     },
     schedule() {
       if (timer !== undefined) clearTimeoutImpl(timer);
-      timer = setTimeoutImpl(() => {
-        timer = undefined;
-        onIdle();
-      }, idleMs);
+      timer = setTimeoutImpl(
+        () => {
+          timer = undefined;
+          onIdle();
+        },
+        Math.max(0, idleMs - (now() - lastActivity)),
+      );
     },
     isIdle(force = false) {
       return force || now() - lastActivity >= idleMs;

@@ -1,5 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import createAudioTransmission from "../../../src/audio/transmission.mjs";
+import createTransmissionEnd from "../../../src/audio/transmission/end.mjs";
 
 const rnnoise = {
   frameSize: 480,
@@ -9,6 +10,25 @@ const rnnoise = {
 async function flushMicrotasks() {
   for (let attempt = 0; attempt < 8; attempt += 1) await Promise.resolve();
 }
+
+test("reschedules the idle timeout when startup completes after new audio", async () => {
+  let checks = 0;
+  const rescheduleIdle = jest.fn();
+  const end = createTransmissionEnd({
+    isClosed: () => false,
+    isIdle: () => ++checks === 1,
+    isStarting: () => true,
+    waitForStart: async () => {},
+    rescheduleIdle,
+    buffer: {},
+    sender: {},
+    getStreamId: () => undefined,
+    setStreamId: () => {},
+    recovery: {},
+  });
+  await end(false);
+  expect(rescheduleIdle).toHaveBeenCalledTimes(1);
+});
 
 test("closes an active stream when shutdown precedes the idle timeout", async () => {
   let idleCallback;

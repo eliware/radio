@@ -3,6 +3,7 @@ export default function createTransmissionEnd({
   isIdle,
   isStarting,
   waitForStart,
+  rescheduleIdle,
   buffer,
   sender,
   getStreamId,
@@ -12,7 +13,10 @@ export default function createTransmissionEnd({
   return async function end(force) {
     if ((isClosed() && !force) || !isIdle(force)) return;
     if (isStarting()) await waitForStart();
-    if (!isIdle(force)) return;
+    if (!isIdle(force)) {
+      rescheduleIdle();
+      return;
+    }
     buffer.keepCompleteFrames();
     sender.flush();
     buffer.clear();
