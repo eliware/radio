@@ -35,6 +35,36 @@ test.each([null, " ", 0, -1, 1.2, Number.MAX_SAFE_INTEGER + 1, {}])(
   },
 );
 
+test("logs a sanitized invalid stream response once per minute when diagnostics are enabled", async () => {
+  let now = 60000;
+  const log = { error: jest.fn() };
+  const streams = createZelloStreams("PD", true, log, () => now);
+  streams.setRequest(async () => ({ stream_id: null, password: "private" }));
+
+  await expect(streams.startStream()).rejects.toThrow("invalid stream_id");
+  expect(log.error).toHaveBeenCalledTimes(1);
+  expect(log.error.mock.calls[0][1]).toMatchObject({ channel: "PD", streamIdType: "null" });
+  expect(JSON.stringify(log.error.mock.calls[0][1])).not.toContain("private");
+
+  await expect(streams.startStream()).rejects.toThrow("invalid stream_id");
+  expect(log.error).toHaveBeenCalledTimes(1);
+
+  now += 60000;
+  await expect(streams.startStream()).rejects.toThrow("invalid stream_id");
+  expect(log.error).toHaveBeenCalledTimes(2);
+});
+
+test.each([[], undefined])("logs the invalid stream ID type for %p", async (streamId) => {
+  const log = { error: jest.fn() };
+  const streams = createZelloStreams("PD", true, log, () => 60000);
+  streams.setRequest(async () => ({ stream_id: streamId }));
+
+  await expect(streams.startStream()).rejects.toThrow("invalid stream_id");
+  expect(log.error.mock.calls[0][1].streamIdType).toBe(
+    Array.isArray(streamId) ? "array" : "undefined",
+  );
+});
+
 test("stops a stream on its configured channel", async () => {
   const request = jest.fn();
   const streams = createZelloStreams("FD");

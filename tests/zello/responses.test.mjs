@@ -51,6 +51,54 @@ test("uses the default failure message when the response has no error", () => {
   expect(reject).toHaveBeenCalledWith(new Error("Zello request failed"));
 });
 
+test("logs sanitized command errors once per minute when diagnostics are enabled", () => {
+  const socket = new EventEmitter();
+  const log = { warn: jest.fn() };
+  let now = 60000;
+  const waiting = new Map();
+  for (let seq = 1; seq <= 3; seq += 1)
+    waiting.set(seq, {
+      resolve: jest.fn(),
+      reject: jest.fn(),
+      timer: undefined,
+      command: "stop_stream",
+      channel: "PD",
+    });
+  waiting.set(4, {
+    resolve: jest.fn(),
+    reject: jest.fn(),
+    timer: undefined,
+  });
+  listenForZelloResponses(
+    socket,
+    () => true,
+    waiting,
+    undefined,
+    true,
+    log,
+    () => now,
+  );
+
+  for (const seq of [1, 2])
+    socket.emit(
+      "message",
+      Buffer.from(JSON.stringify({ seq, error: "invalid stream id", password: "private" })),
+    );
+  expect(log.warn).toHaveBeenCalledTimes(1);
+  expect(log.warn.mock.calls[0][1]).toMatchObject({ command: "stop_stream", channel: "PD" });
+  expect(JSON.stringify(log.warn.mock.calls[0][1])).not.toContain("private");
+
+  now += 60000;
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: 3, error: "invalid stream id" })));
+  expect(log.warn).toHaveBeenCalledTimes(2);
+  expect(log.warn.mock.calls[1][1].channel).toBe("PD");
+
+  socket.emit("message", Buffer.from(JSON.stringify({ seq: 4, error: "denied" })));
+  expect(log.warn).toHaveBeenCalledTimes(3);
+  expect(log.warn.mock.calls[2][1]).toMatchObject({ command: "unknown" });
+  expect(log.warn.mock.calls[2][1]).not.toHaveProperty("channel");
+});
+
 test("rejects matching responses whose success flag is not boolean", () => {
   const socket = new EventEmitter();
   const reject = jest.fn();

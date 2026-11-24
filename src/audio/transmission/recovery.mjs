@@ -46,6 +46,11 @@ export default function createAudioStreamRecovery({
           await session.stopStream(id);
           return undefined;
         } catch (error) {
+          if (
+            typeof error?.message === "string" &&
+            error.message.trim().toLowerCase() === "invalid stream id"
+          )
+            return undefined;
           onError(error);
           return id;
         }

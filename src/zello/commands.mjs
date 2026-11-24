@@ -27,7 +27,13 @@ export default function createZelloCommands(
         pendingRequests.remove(seq);
         reject(new Error(`Zello ${command.command} timed out`));
       }, 10000);
-      waiting.set(seq, { resolve, reject, timer, command: command.command });
+      waiting.set(seq, {
+        resolve,
+        reject,
+        timer,
+        command: command.command,
+        ...(command.channel && { channel: command.channel }),
+      });
       try {
         socket.send(JSON.stringify({ ...command, seq }));
       } catch (error) {

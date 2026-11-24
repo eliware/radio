@@ -128,6 +128,30 @@ test("retries failed abandoned stream stops before reporting completion", async 
   expect(onComplete).toHaveBeenCalledTimes(1);
 });
 
+test.each([new Error("invalid stream id"), new Error(" Invalid Stream ID ")])(
+  "forgets an abandoned stream when Zello says it is already invalid",
+  async (error) => {
+    const onError = jest.fn();
+    const onComplete = jest.fn();
+    const setTimeoutImpl = jest.fn();
+    const recovery = createAudioStreamRecovery({
+      session: { healthy: () => true, stopStream: async () => Promise.reject(error) },
+      onError,
+      now: () => 0,
+      setTimeoutImpl,
+      clearTimeoutImpl: jest.fn(),
+    });
+    recovery.abandon(11);
+
+    await recovery.stopAbandoned(onComplete);
+
+    expect(recovery.hasAbandoned).toBe(false);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(setTimeoutImpl).not.toHaveBeenCalled();
+  },
+);
+
 test("stops a disconnected stream after reconnect, even without later audio", async () => {
   let healthy = true;
   let now = 0;
