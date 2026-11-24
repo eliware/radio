@@ -132,20 +132,20 @@ The app rejects channel settings that are not listed in the table.
 These environment variables configure the application process or its HTTP status endpoint. They
 are separate from the per-channel settings above.
 
-| Variable                      | Required | Meaning and default                                                                  |
-| ----------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `RADIO_CONFIG_FILES`          | No       | Non-empty JSON array of channel paths. Defaults to the application root `.env` file. |
-| `RADIO_HEALTH_PORT`           | No       | HTTP status port. Defaults to `1400`. Accepts integers from `0` through `65535`.     |
-| `RADIO_ZELLO_DEBUG_RESPONSES` | No       | Adds sanitized values to invalid Zello response logs. Defaults to `false`.           |
-| `LOG_LEVEL`                   | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.              |
+| Variable                      | Required | Meaning and default                                                                                              |
+| ----------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `RADIO_CONFIG_FILES`          | No       | Non-empty JSON array of channel paths. Defaults to the application root `.env` file.                             |
+| `RADIO_HEALTH_PORT`           | No       | HTTP status port. Defaults to `1400`. Accepts integers from `0` through `65535`.                                 |
+| `RADIO_ZELLO_DEBUG_RESPONSES` | No       | Adds sanitized values to invalid Zello response logs. Defaults to `false` in the app. Compose sets it to `true`. |
+| `LOG_LEVEL`                   | No       | Log verbosity: `debug`, `info`, `warn`, or `error`. Defaults to `info`.                                          |
 
 A value of `0` lets the operating system select a port. The Compose health check expects port
 `1400`, so keep the default when you use Compose. `RADIO_CONFIG_FILES` must contain one or more
 non-empty file paths. For example, use `["/run/radio/channel.env", "/run/radio/channel2.env"]`.
 The container default is `/app/.env`.
 
-To inspect invalid Zello replies, set `RADIO_ZELLO_DEBUG_RESPONSES=true` before you run
-`docker compose up -d`. The app removes known credentials and values under sensitive fields before it logs them.
+Compose enables detailed Zello response logs. The app removes known credentials and sensitive values
+before it writes those logs. Set `RADIO_ZELLO_DEBUG_RESPONSES=false` in `compose.yaml` to disable them.
 
 ## Startup and recovery
 

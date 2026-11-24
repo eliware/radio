@@ -1,11 +1,21 @@
 # Release Notes
 
-## 15.2.2 — 2026-11-23
+## 15.2.2 — 2026-11-24
+
+### Added
+
+- Logs command names and response field types after repeated invalid Zello replies.
+- Includes sanitized response details in diagnostic logs when `RADIO_ZELLO_DEBUG_RESPONSES` is `true`.
+- Enables Zello response diagnostics in Compose.
 
 ### Changed
 
-- Adds command names and response field types to repeated invalid Zello response logs.
-- Adds optional sanitized response values when `RADIO_ZELLO_DEBUG_RESPONSES` is `true`.
+- Handles Zello replies with a string `error` field as failed commands when `success` is not Boolean.
+- Refreshes resolved `caniuse-lite` and `electron-to-chromium` dependencies.
+
+### Fixed
+
+- Drops abandoned stream IDs after Zello reports that an ID is invalid.
 
 ## 15.2.1 — 2026-11-23
 
